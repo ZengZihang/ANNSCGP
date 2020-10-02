@@ -1,0 +1,2269 @@
+<html>
+
+<head>
+<style type="text/css">
+.inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.left {
+  text-align: left;
+}
+.right {
+  text-align: right;
+}
+.center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+<title>Supervised Artificial Neural Network with Selective Connection based on Gene Patterns</title>
+</head>
+
+<body>
+
+<h1>Supervised Artificial Neural Network with Selective Connection based on Gene Patterns</h1>
+
+<h2><strong>Zihang Zeng</strong></h2>
+
+<strong>ANN-SCGP proposes a supervised Artificial Neural Network with Selective Connection based on Gene Patterns (ANN-SCGP) model to fit clinical characteristics using Omics-data</strong>
+
+<h2>Data preparation</h2>
+
+<p>Loading example</p>
+<div class="chunk" id="unnamed-chunk-1"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">##Loading example</span>
+<span class="hl com">#data=read.csv(&quot;data.csv&quot;)</span>
+<span class="hl com">#clin=read.csv(&quot;clin.csv&quot;)</span>
+<span class="hl com">#validate_data=read.csv(&quot;validate_data.csv&quot;)</span>
+<span class="hl com">#validate_clin=read.csv(&quot;validate_clin.csv&quot;)</span>
+<span class="hl std">metabric</span> <span class="hl kwb">&lt;-</span> <span class="hl std">hdf5r</span><span class="hl opt">::</span><span class="hl std">H5File</span><span class="hl opt">$</span><span class="hl kwd">new</span><span class="hl std">(</span><span class="hl str">&quot;data/metabric_IHC4_clinical_train_test.h5&quot;</span><span class="hl std">,</span> <span class="hl kwc">mode</span> <span class="hl std">=</span> <span class="hl str">&quot;r&quot;</span><span class="hl std">)</span>
+<span class="hl std">metabric</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Class: H5File
+## Filename: D:\ANNSCGP\ANNSCGP\data\metabric_IHC4_clinical_train_test.h5
+## Access type: H5F_ACC_RDONLY
+## Listing:
+##   name  obj_type dataset.dims dataset.type_class
+##   test H5I_GROUP         &lt;NA&gt;               &lt;NA&gt;
+##  train H5I_GROUP         &lt;NA&gt;               &lt;NA&gt;
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###training data</span>
+<span class="hl std">data</span><span class="hl kwb">=</span><span class="hl kwd">t</span><span class="hl std">(metabric[[</span><span class="hl str">&quot;train&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;x&quot;</span><span class="hl std">]][,])</span>
+<span class="hl kwd">rownames</span><span class="hl std">(data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(data)</span>
+<span class="hl kwd">colnames</span><span class="hl std">(data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">ncol</span><span class="hl std">(data)</span>
+<span class="hl std">clin</span><span class="hl kwb">=</span><span class="hl kwd">data.frame</span><span class="hl std">(</span><span class="hl kwc">time</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;train&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;t&quot;</span><span class="hl std">]][]</span><span class="hl opt">/</span><span class="hl num">100</span><span class="hl std">,</span><span class="hl kwc">status</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;train&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;e&quot;</span><span class="hl std">]][])</span>
+<span class="hl kwd">rownames</span><span class="hl std">(clin)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(clin)</span>
+<span class="hl std">data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##          1        2         3        4 5
+## 1 5.603834 7.811392 10.797988 5.967607 1
+## 2 5.284882 9.581043 10.204620 5.664970 1
+## 3 5.920251 6.776564 12.431715 5.873857 0
+## 4 6.654017 5.341846  8.646379 5.655888 0
+## 5 5.456747 5.339741 10.555724 6.008429 1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">clin[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##        time status
+## 1 0.9933334      0
+## 2 0.9573333      1
+## 3 1.4023334      0
+## 4 2.3930000      0
+## 5 0.5693333      1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###testing data</span>
+<span class="hl std">validate_data</span><span class="hl kwb">=</span><span class="hl kwd">t</span><span class="hl std">(metabric[[</span><span class="hl str">&quot;test&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;x&quot;</span><span class="hl std">]][,])</span>
+<span class="hl kwd">colnames</span><span class="hl std">(validate_data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">ncol</span><span class="hl std">(validate_data)</span>
+<span class="hl kwd">rownames</span><span class="hl std">(validate_data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(validate_data)</span>
+<span class="hl std">validate_clin</span><span class="hl kwb">=</span><span class="hl kwd">data.frame</span><span class="hl std">(</span><span class="hl kwc">time</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;test&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;t&quot;</span><span class="hl std">]][]</span><span class="hl opt">/</span><span class="hl num">100</span><span class="hl std">,</span><span class="hl kwc">status</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;test&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;e&quot;</span><span class="hl std">]][])</span>
+<span class="hl kwd">rownames</span><span class="hl std">(validate_clin)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(validate_clin)</span>
+<span class="hl std">validate_data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##          1        2         3        4 5
+## 1 8.003323 5.383952 13.391568 6.177617 0
+## 2 5.877926 8.036838 10.164740 5.866741 0
+## 3 5.892256 6.425127 11.480591 5.551163 1
+## 4 5.556709 7.545435 11.240383 6.057502 0
+## 5 5.501077 7.791979  9.923388 5.588843 1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">validate_clin[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##        time status
+## 1 1.0210000      0
+## 2 1.7110001      0
+## 3 1.7483333      0
+## 4 1.0726667      1
+## 5 0.4683333      1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###standardization</span>
+<span class="hl std">normalize_minmax</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+     <span class="hl kwd">return</span><span class="hl std">((x</span><span class="hl opt">-</span><span class="hl kwd">min</span><span class="hl std">(x)</span><span class="hl opt">+</span><span class="hl num">0.001</span><span class="hl std">)</span><span class="hl opt">/</span><span class="hl std">(</span><span class="hl kwd">max</span><span class="hl std">(x)</span><span class="hl opt">-</span><span class="hl kwd">min</span><span class="hl std">(x)</span><span class="hl opt">+</span><span class="hl num">0.001</span><span class="hl std">))}</span>
+<span class="hl std">data</span><span class="hl kwb">=</span><span class="hl kwd">normalize_minmax</span><span class="hl std">(</span><span class="hl kwd">scale</span><span class="hl std">(data))</span>
+<span class="hl std">validate_data</span><span class="hl kwb">=</span><span class="hl std">(</span><span class="hl kwd">scale</span><span class="hl std">(validate_data))</span>
+<span class="hl std">data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##           1         2         3         4         5
+## 1 0.1965050 0.3709469 0.2537325 0.2746444 0.3145287
+## 2 0.1675138 0.5060012 0.2197192 0.2053290 0.3145287
+## 3 0.2252658 0.2919720 0.3473820 0.2531721 0.1552515
+## 4 0.2919616 0.1824787 0.1303967 0.2032488 0.1552515
+## 5 0.1831355 0.1823182 0.2398453 0.2839941 0.3145287
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">validate_data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##            1          2          3           4          5
+## 1  2.0143344 -0.7959752  1.9265200  0.81401550 -1.4040565
+## 2 -0.3803895  1.8001287 -0.4590769 -0.08648742 -1.4040565
+## 3 -0.3642432  0.2229145  0.5137330 -1.00061071  0.7103527
+## 4 -0.7423107  1.3192445  0.3361472  0.46608469 -1.4040565
+## 5 -0.8049924  1.5605109 -0.6375087 -0.89146261  0.7103527
+</pre></div>
+</div></div>
+
+<h2>Identification of gene patterns based on GOSemSim</h2>
+
+<p>If you have a pre-determined gene cluster data, you can skip this step and organize according to the format of <strong>clust</strong> object</p>
+
+<div class="chunk" id="unnamed-chunk-2"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">### Since there is no gene information in the metametric dataset, an example is used for analysis</span>
+<span class="hl kwd">library</span><span class="hl std">(ANNSCGP)</span>
+<span class="hl kwd">library</span><span class="hl std">(factoextra)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: ggplot2
+</pre></div>
+<div class="message"><pre class="knitr r">## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">genes</span><span class="hl kwb">=</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl str">&quot;TP53&quot;</span><span class="hl std">,</span><span class="hl str">&quot;EP300&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CREBBP&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CDKN2A&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CDKN1A&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CHEK2&quot;</span><span class="hl std">,</span><span class="hl str">&quot;MDM2&quot;</span><span class="hl std">,</span><span class="hl str">&quot;BCR&quot;</span><span class="hl std">,</span><span class="hl str">&quot;TP53BP2&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CD28&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CD274&quot;</span><span class="hl std">,</span><span class="hl str">&quot;CD8A&quot;</span><span class="hl std">,</span><span class="hl str">&quot;ATM&quot;</span><span class="hl std">,</span><span class="hl str">&quot;ATR&quot;</span><span class="hl std">,</span><span class="hl str">&quot;PARP1&quot;</span><span class="hl std">)</span>
+<span class="hl std">Sem_matrix</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_GOSemSim</span><span class="hl std">(genes)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: org.Hs.eg.db
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: AnnotationDbi
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: stats4
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: BiocGenerics
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: parallel
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## Attaching package: 'BiocGenerics'
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:parallel':
+## 
+##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+##     parLapplyLB, parRapply, parSapply, parSapplyLB
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:stats':
+## 
+##     IQR, mad, sd, var, xtabs
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:base':
+## 
+##     anyDuplicated, append, as.data.frame, basename, cbind, colnames,
+##     dirname, do.call, duplicated, eval, evalq, Filter, Find, get, grep,
+##     grepl, intersect, is.unsorted, lapply, Map, mapply, match, mget,
+##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+##     rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+##     union, unique, unsplit, which, which.max, which.min
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: Biobase
+</pre></div>
+<div class="message"><pre class="knitr r">## Welcome to Bioconductor
+## 
+##     Vignettes contain introductory material; view with
+##     'browseVignettes()'. To cite Bioconductor, see
+##     'citation(&quot;Biobase&quot;)', and for packages 'citation(&quot;pkgname&quot;)'.
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: IRanges
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: S4Vectors
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## Attaching package: 'S4Vectors'
+</pre></div>
+<div class="message"><pre class="knitr r">## The following object is masked from 'package:base':
+## 
+##     expand.grid
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## Attaching package: 'IRanges'
+</pre></div>
+<div class="message"><pre class="knitr r">## The following object is masked from 'package:grDevices':
+## 
+##     windows
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+</pre></div>
+<div class="message"><pre class="knitr r">## preparing gene to GO mapping data...
+## preparing gene to GO mapping data...
+## preparing gene to GO mapping data...
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">pheatmap</span><span class="hl opt">::</span><span class="hl kwd">pheatmap</span><span class="hl std">(Sem_matrix)</span> <span class="hl com">#visualization</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-1.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">### Determine optimal number of clusters</span>
+<span class="hl com">## total within sum of square</span>
+<span class="hl kwd">fviz_nbclust</span><span class="hl std">(Sem_matrix, hcut,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;wss&quot;</span><span class="hl std">,</span><span class="hl kwc">k.max</span><span class="hl std">=</span><span class="hl num">4</span><span class="hl std">)</span> <span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">subtitle</span> <span class="hl std">=</span> <span class="hl str">&quot;Elbow method&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-2.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">## average silhouette width</span>
+<span class="hl kwd">fviz_nbclust</span><span class="hl std">(Sem_matrix, hcut,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;silhouette&quot;</span><span class="hl std">,</span><span class="hl kwc">k.max</span><span class="hl std">=</span><span class="hl num">4</span><span class="hl std">)</span> <span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">subtitle</span> <span class="hl std">=</span> <span class="hl str">&quot;silhouette method&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-3.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">## gap statistics</span>
+<span class="hl kwd">fviz_nbclust</span><span class="hl std">(Sem_matrix, hcut,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;gap_stat&quot;</span><span class="hl std">,</span><span class="hl kwc">k.max</span><span class="hl std">=</span><span class="hl num">4</span><span class="hl std">)</span> <span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">subtitle</span> <span class="hl std">=</span> <span class="hl str">&quot;gap statistics method&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-4.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">k</span><span class="hl kwb">=</span><span class="hl num">2</span> <span class="hl com">## Determine optimal k</span>
+<span class="hl std">clust_group</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_gene_pattern</span><span class="hl std">(Sem_matrix,k)</span>
+<span class="hl kwd">library</span><span class="hl std">(dplyr)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## Attaching package: 'dplyr'
+</pre></div>
+<div class="message"><pre class="knitr r">## The following object is masked from 'package:AnnotationDbi':
+## 
+##     select
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:IRanges':
+## 
+##     collapse, desc, intersect, setdiff, slice, union
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:S4Vectors':
+## 
+##     first, intersect, rename, setdiff, setequal, union
+</pre></div>
+<div class="message"><pre class="knitr r">## The following object is masked from 'package:Biobase':
+## 
+##     combine
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:BiocGenerics':
+## 
+##     combine, intersect, setdiff, union
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">clust_type</span><span class="hl kwb">=</span><span class="hl kwd">rep</span><span class="hl std">(</span><span class="hl str">&quot;RNA&quot;</span><span class="hl std">,</span><span class="hl kwd">length</span><span class="hl std">(clust_group))</span> <span class="hl com">#groups of each omics are provided here</span>
+<span class="hl std">clust</span><span class="hl kwb">=</span><span class="hl kwd">tibble</span><span class="hl std">(</span>
+   <span class="hl kwc">clust_group</span> <span class="hl std">= clust_group,</span>
+   <span class="hl kwc">clust_type</span> <span class="hl std">= clust_type</span>
+
+ <span class="hl std">)</span>
+ <span class="hl kwd">library</span><span class="hl std">(tidyfst)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## Life's short, use R.
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## Attaching package: 'tidyfst'
+</pre></div>
+<div class="message"><pre class="knitr r">## The following objects are masked from 'package:dplyr':
+## 
+##     between, cummean, nth
+</pre></div>
+<div class="source"><pre class="knitr r"> <span class="hl std">clust</span><span class="hl kwb">=</span><span class="hl std">clust</span> <span class="hl opt">%&gt;%</span>
+   <span class="hl kwd">group_by</span><span class="hl std">(clust_group,clust_type)</span><span class="hl opt">%&gt;%</span>
+   <span class="hl kwd">mutate</span><span class="hl std">(</span><span class="hl kwc">grp</span> <span class="hl std">=</span> <span class="hl kwd">cur_group_id</span><span class="hl std">())</span>
+ <span class="hl std">clust</span><span class="hl kwb">=</span><span class="hl kwd">as.data.frame</span><span class="hl std">(clust)</span>
+ <span class="hl kwd">rownames</span><span class="hl std">(clust)</span><span class="hl kwb">=</span><span class="hl kwd">names</span><span class="hl std">(clust_group)</span>
+ <span class="hl std">clust</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##         clust_group clust_type grp
+## TP53              1        RNA   1
+## EP300             1        RNA   1
+## CREBBP            1        RNA   1
+## CDKN2A            1        RNA   1
+## CDKN1A            1        RNA   1
+## CHEK2             1        RNA   1
+## MDM2              1        RNA   1
+## BCR               2        RNA   2
+## TP53BP2           1        RNA   1
+## CD28              2        RNA   2
+## CD274             2        RNA   2
+## CD8A              2        RNA   2
+## ATM               1        RNA   1
+## ATR               1        RNA   1
+## PARP1             1        RNA   1
+</pre></div>
+</div></div>
+
+<p>In example of metabric data, we create <strong>clust</strong> object </p>
+<div class="chunk" id="unnamed-chunk-3"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">clust</span><span class="hl kwb">=</span><span class="hl kwd">as.data.frame</span><span class="hl std">(</span><span class="hl kwd">matrix</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span><span class="hl kwd">ncol</span><span class="hl std">(data),</span><span class="hl num">3</span><span class="hl std">))</span>
+<span class="hl kwd">rownames</span><span class="hl std">(clust)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(clust)</span>
+<span class="hl kwd">colnames</span><span class="hl std">(clust)</span><span class="hl kwb">=</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl str">&quot;clust_group&quot;</span><span class="hl std">,</span><span class="hl str">&quot;clust_type&quot;</span><span class="hl std">,</span><span class="hl str">&quot;grp&quot;</span><span class="hl std">)</span>
+<span class="hl std">clust</span><span class="hl opt">$</span><span class="hl std">clust_type</span><span class="hl kwb">=</span><span class="hl str">&quot;clinical&quot;</span>
+<span class="hl std">clust</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##   clust_group clust_type grp
+## 1           1   clinical   1
+## 2           1   clinical   1
+## 3           1   clinical   1
+## 4           1   clinical   1
+## 5           1   clinical   1
+## 6           1   clinical   1
+## 7           1   clinical   1
+## 8           1   clinical   1
+## 9           1   clinical   1
+</pre></div>
+</div></div>
+<h2>Activation function</h2>
+<p>sigmoid function</p>
+<div class="chunk" id="unnamed-chunk-4"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">sigmoid</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl kwd">return</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">/</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">+</span><span class="hl kwd">exp</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x)))</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">sigmoid</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;sigmoid function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-4-1.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_sigmoid</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">sigmoid</span><span class="hl std">(x)</span><span class="hl opt">*</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">-</span><span class="hl kwd">sigmoid</span><span class="hl std">(x))</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_sigmoid</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of sigmoid function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-4-2.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" class="plot" /></div></div>
+<p>tanh function</p>
+<div class="chunk" id="unnamed-chunk-5"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">tanh</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl kwd">return</span><span class="hl std">((</span><span class="hl kwd">exp</span><span class="hl std">(x)</span><span class="hl opt">-</span><span class="hl kwd">exp</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x))</span><span class="hl opt">/</span><span class="hl std">(</span><span class="hl kwd">exp</span><span class="hl std">(x)</span><span class="hl opt">+</span><span class="hl kwd">exp</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x)))</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">tanh</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;tanh function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-5-1.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_tanh</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">-</span><span class="hl std">(</span><span class="hl kwd">tanh</span><span class="hl std">(x)</span><span class="hl opt">^</span><span class="hl num">2</span><span class="hl std">)</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_tanh</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of tanh function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-5-2.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" class="plot" /></div></div>
+<p>ReLU function</p>
+<div class="chunk" id="unnamed-chunk-6"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">ReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">ReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;ReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_ReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+  <span class="hl std">x[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_ReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of ReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-6-2.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" class="plot" /></div></div>
+<p>LReLU function</p>
+<div class="chunk" id="unnamed-chunk-7"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">0.01</span>
+<span class="hl std">LReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span><span class="hl opt">*</span><span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">LReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;LReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-7-1.png" title="plot of chunk unnamed-chunk-7" alt="plot of chunk unnamed-chunk-7" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_LReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span>
+  <span class="hl std">x[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_ReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of LReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-7-2.png" title="plot of chunk unnamed-chunk-7" alt="plot of chunk unnamed-chunk-7" class="plot" /></div></div>
+<p>ELU function</p>
+<div class="chunk" id="unnamed-chunk-8"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">1.67326324235</span>
+<span class="hl std">ELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span><span class="hl opt">*</span><span class="hl std">(</span><span class="hl kwd">exp</span><span class="hl std">(x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">])</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">)</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">ELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;ELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-8-1.png" title="plot of chunk unnamed-chunk-8" alt="plot of chunk unnamed-chunk-8" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_ELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x1</span><span class="hl kwb">=</span><span class="hl std">x</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl kwd">ELU</span><span class="hl std">(x)[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl opt">+</span><span class="hl std">alpha</span>
+  <span class="hl kwd">return</span><span class="hl std">(x1)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_ELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of ELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-8-2.png" title="plot of chunk unnamed-chunk-8" alt="plot of chunk unnamed-chunk-8" class="plot" /></div></div>
+<p>SELU function</p>
+<div class="chunk" id="unnamed-chunk-9"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">1.67326324235</span>
+<span class="hl std">lambda</span><span class="hl kwb">=</span><span class="hl num">1.05070098736</span>
+<span class="hl std">SELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x</span><span class="hl kwb">=</span><span class="hl std">x</span><span class="hl opt">*</span><span class="hl std">lambda</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span><span class="hl opt">*</span><span class="hl std">(</span><span class="hl kwd">exp</span><span class="hl std">(x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">])</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">)</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">SELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;SELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-9-1.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_SELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x1</span><span class="hl kwb">=</span><span class="hl std">x</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">lambda</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">(</span><span class="hl kwd">SELU</span><span class="hl std">(x)[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl opt">+</span><span class="hl std">alpha)</span><span class="hl opt">*</span><span class="hl std">lambda</span>
+  <span class="hl kwd">return</span><span class="hl std">(x1)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_SELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of SELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-9-2.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" class="plot" /></div></div>
+<p>identity function</p>
+<div class="chunk" id="unnamed-chunk-10"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">1</span>
+<span class="hl std">identity</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(alpha</span><span class="hl opt">*</span><span class="hl std">x)}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">identity</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;identity function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-10-1.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_identity</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(</span><span class="hl kwd">rep</span><span class="hl std">(alpha,</span><span class="hl kwd">length</span><span class="hl std">(x)))}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_identity</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of identity function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-10-2.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" class="plot" /></div></div>
+<p>origin function</p>
+<div class="chunk" id="unnamed-chunk-11"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">origin</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(x)}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">origin</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;origin function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-11-1.png" title="plot of chunk unnamed-chunk-11" alt="plot of chunk unnamed-chunk-11" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_origin</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(</span><span class="hl kwd">rep</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span><span class="hl kwd">length</span><span class="hl std">(x)))}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_origin</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of origin function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-11-2.png" title="plot of chunk unnamed-chunk-11" alt="plot of chunk unnamed-chunk-11" class="plot" /></div></div>
+<h2>Parameter setting</h2>
+<div class="chunk" id="unnamed-chunk-12"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">parameters</span><span class="hl kwb">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwc">alpha</span><span class="hl std">=</span><span class="hl num">1.67326324235</span><span class="hl std">,</span>  <span class="hl com">#alpha value of activation function</span>
+              <span class="hl kwc">lambda</span><span class="hl std">=</span><span class="hl num">1.05070098736</span><span class="hl std">,</span>   <span class="hl com">#lambda value of activation function</span>
+              <span class="hl kwc">learning_rate</span><span class="hl std">=</span><span class="hl num">0.0001</span><span class="hl std">,</span> <span class="hl com">#learning rate</span>
+              <span class="hl kwc">acf</span><span class="hl std">=SELU,</span> <span class="hl com">#activation function</span>
+              <span class="hl kwc">outf</span><span class="hl std">=origin,</span> <span class="hl com">#activation function in output layer</span>
+              <span class="hl kwc">derivatives_outf</span><span class="hl std">=dev_origin,</span> <span class="hl com">#derivatives of activation function in output layer</span>
+              <span class="hl kwc">derivatives_acf</span><span class="hl std">=dev_SELU,</span> <span class="hl com">#derivatives of activation function</span>
+              <span class="hl kwc">training_n</span><span class="hl std">=</span><span class="hl num">5000</span><span class="hl std">,</span> <span class="hl com">#iterations</span>
+              <span class="hl kwc">message_n</span><span class="hl std">=</span><span class="hl num">10</span><span class="hl std">,</span> <span class="hl com">#message after n iterations</span>
+              <span class="hl kwc">termination_threshold</span><span class="hl std">=</span><span class="hl num">0.95</span><span class="hl std">,</span> <span class="hl com">#termination threshold</span>
+              <span class="hl kwc">greater_than_termination_threshold</span><span class="hl std">=T,</span> <span class="hl com">#T: Terminate when error value is greater than termination threshold</span>
+              <span class="hl kwc">L2_w</span><span class="hl std">=</span><span class="hl num">10</span><span class="hl std">)</span> <span class="hl com">#coefficient of L2-norm</span>
+</pre></div>
+</div></div>
+<h2>Training</h2>
+<div class="chunk" id="unnamed-chunk-13"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">##option setting: A list containing the number of nodes per cluster in each layer (Start with the second layer)</span>
+<span class="hl std">option</span><span class="hl kwb">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">),</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">))</span> <span class="hl com">#there are three layers and only one node in the 2nd and 3rd layer</span>
+<span class="hl com">###more example</span>
+<span class="hl com"># option=list(c(20,30,20),c(20),c(1)) #there are four layers. The 2nd layer had three clusters whose node numbers are 20 (cluster1), 30 (cluster2), 20 (cluster3) respectively.</span>
+
+<span class="hl std">SCGP_res</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_train</span><span class="hl std">(data,clin,option,clust,</span><span class="hl kwc">parameters</span><span class="hl std">=parameters,validate_data,validate_clin,</span><span class="hl kwc">survival_analyis</span><span class="hl std">=T)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: survival
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;The iteration is 10&quot;
+## [1] &quot;The error value is 0.551788269132557&quot;
+## [1] &quot;The validate error value is 0.596983427471914&quot;
+## [1] &quot;The iteration is 20&quot;
+## [1] &quot;The error value is 0.544508567591664&quot;
+## [1] &quot;The validate error value is 0.589286822667743&quot;
+## [1] &quot;The iteration is 30&quot;
+## [1] &quot;The error value is 0.53746134165629&quot;
+## [1] &quot;The validate error value is 0.582004013820785&quot;
+## [1] &quot;The iteration is 40&quot;
+## [1] &quot;The error value is 0.529860131299254&quot;
+## [1] &quot;The validate error value is 0.57449361719736&quot;
+## [1] &quot;The iteration is 50&quot;
+## [1] &quot;The error value is 0.522127844271022&quot;
+## [1] &quot;The validate error value is 0.565183208160056&quot;
+## [1] &quot;The iteration is 60&quot;
+## [1] &quot;The error value is 0.513481730261523&quot;
+## [1] &quot;The validate error value is 0.55485899902758&quot;
+## [1] &quot;The iteration is 70&quot;
+## [1] &quot;The error value is 0.50356318328352&quot;
+## [1] &quot;The validate error value is 0.543769267374258&quot;
+## [1] &quot;The iteration is 80&quot;
+## [1] &quot;The error value is 0.495049382517587&quot;
+## [1] &quot;The validate error value is 0.531355388657853&quot;
+## [1] &quot;The iteration is 90&quot;
+## [1] &quot;The error value is 0.511605849976567&quot;
+## [1] &quot;The validate error value is 0.51900357933503&quot;
+## [1] &quot;The iteration is 100&quot;
+## [1] &quot;The error value is 0.517353438351303&quot;
+## [1] &quot;The validate error value is 0.508389713032504&quot;
+## [1] &quot;The iteration is 110&quot;
+## [1] &quot;The error value is 0.522794356778333&quot;
+## [1] &quot;The validate error value is 0.499534479548135&quot;
+## [1] &quot;The iteration is 120&quot;
+## [1] &quot;The error value is 0.526731603203712&quot;
+## [1] &quot;The validate error value is 0.490844764446651&quot;
+## [1] &quot;The iteration is 130&quot;
+## [1] &quot;The error value is 0.530396803707739&quot;
+## [1] &quot;The validate error value is 0.483044710653177&quot;
+## [1] &quot;The iteration is 140&quot;
+## [1] &quot;The error value is 0.534424319916111&quot;
+## [1] &quot;The validate error value is 0.475223967061842&quot;
+## [1] &quot;The iteration is 150&quot;
+## [1] &quot;The error value is 0.537013702458429&quot;
+## [1] &quot;The validate error value is 0.530010551796909&quot;
+## [1] &quot;The iteration is 160&quot;
+## [1] &quot;The error value is 0.53931249049385&quot;
+## [1] &quot;The validate error value is 0.536341629942275&quot;
+## [1] &quot;The iteration is 170&quot;
+## [1] &quot;The error value is 0.541461653272527&quot;
+## [1] &quot;The validate error value is 0.540955454865206&quot;
+## [1] &quot;The iteration is 180&quot;
+## [1] &quot;The error value is 0.543077853359829&quot;
+## [1] &quot;The validate error value is 0.545300312415948&quot;
+## [1] &quot;The iteration is 190&quot;
+## [1] &quot;The error value is 0.544444265828435&quot;
+## [1] &quot;The validate error value is 0.549334822998779&quot;
+## [1] &quot;The iteration is 200&quot;
+## [1] &quot;The error value is 0.545672182191627&quot;
+## [1] &quot;The validate error value is 0.552810709039373&quot;
+## [1] &quot;The iteration is 210&quot;
+## [1] &quot;The error value is 0.546764075594142&quot;
+## [1] &quot;The validate error value is 0.555934868516335&quot;
+## [1] &quot;The iteration is 220&quot;
+## [1] &quot;The error value is 0.547703870595175&quot;
+## [1] &quot;The validate error value is 0.559307305567625&quot;
+## [1] &quot;The iteration is 230&quot;
+## [1] &quot;The error value is 0.548591729556676&quot;
+## [1] &quot;The validate error value is 0.561996979289512&quot;
+## [1] &quot;The iteration is 240&quot;
+## [1] &quot;The error value is 0.549212488886306&quot;
+## [1] &quot;The validate error value is 0.564728032607121&quot;
+## [1] &quot;The iteration is 250&quot;
+## [1] &quot;The error value is 0.54980480705143&quot;
+## [1] &quot;The validate error value is 0.567397016531148&quot;
+## [1] &quot;The iteration is 260&quot;
+## [1] &quot;The error value is 0.550437932104757&quot;
+## [1] &quot;The validate error value is 0.569610824902241&quot;
+## [1] &quot;The iteration is 270&quot;
+## [1] &quot;The error value is 0.551012938256705&quot;
+## [1] &quot;The validate error value is 0.571452216911841&quot;
+## [1] &quot;The iteration is 280&quot;
+## [1] &quot;The error value is 0.551385146540009&quot;
+## [1] &quot;The validate error value is 0.573500506900048&quot;
+## [1] &quot;The iteration is 290&quot;
+## [1] &quot;The error value is 0.551706655356151&quot;
+## [1] &quot;The validate error value is 0.57478327436741&quot;
+## [1] &quot;The iteration is 300&quot;
+## [1] &quot;The error value is 0.552039293323622&quot;
+## [1] &quot;The validate error value is 0.576438458196263&quot;
+## [1] &quot;The iteration is 310&quot;
+## [1] &quot;The error value is 0.552175316284298&quot;
+## [1] &quot;The validate error value is 0.577617776674322&quot;
+## [1] &quot;The iteration is 320&quot;
+## [1] &quot;The error value is 0.552243327764636&quot;
+## [1] &quot;The validate error value is 0.579583307471086&quot;
+## [1] &quot;The iteration is 330&quot;
+## [1] &quot;The error value is 0.552478276514894&quot;
+## [1] &quot;The validate error value is 0.581321250491383&quot;
+## [1] &quot;The iteration is 340&quot;
+## [1] &quot;The error value is 0.552845538508718&quot;
+## [1] &quot;The validate error value is 0.583597128256057&quot;
+## [1] &quot;The iteration is 350&quot;
+## [1] &quot;The error value is 0.553027314647076&quot;
+## [1] &quot;The validate error value is 0.585252312084911&quot;
+## [1] &quot;The iteration is 360&quot;
+## [1] &quot;The error value is 0.553262263397334&quot;
+## [1] &quot;The validate error value is 0.58645232036083&quot;
+## [1] &quot;The iteration is 370&quot;
+## [1] &quot;The error value is 0.553447749252801&quot;
+## [1] &quot;The validate error value is 0.587921296008938&quot;
+## [1] &quot;The iteration is 380&quot;
+## [1] &quot;The error value is 0.553787806654491&quot;
+## [1] &quot;The validate error value is 0.589845447209981&quot;
+## [1] &quot;The iteration is 390&quot;
+## [1] &quot;The error value is 0.554161251510164&quot;
+## [1] &quot;The validate error value is 0.591521320836695&quot;
+## [1] &quot;The iteration is 400&quot;
+## [1] &quot;The error value is 0.554516147780291&quot;
+## [1] &quot;The validate error value is 0.592659259719033&quot;
+## [1] &quot;The iteration is 410&quot;
+## [1] &quot;The error value is 0.554898248642553&quot;
+## [1] &quot;The validate error value is 0.594355823143608&quot;
+## [1] &quot;The iteration is 420&quot;
+## [1] &quot;The error value is 0.555345887840413&quot;
+## [1] &quot;The validate error value is 0.595721349802412&quot;
+## [1] &quot;The iteration is 430&quot;
+## [1] &quot;The error value is 0.555669869801295&quot;
+## [1] &quot;The validate error value is 0.597004117269774&quot;
+## [1] &quot;The iteration is 440&quot;
+## [1] &quot;The error value is 0.556011163775354&quot;
+## [1] &quot;The validate error value is 0.598224815343554&quot;
+## [1] &quot;The iteration is 450&quot;
+## [1] &quot;The error value is 0.556434071525819&quot;
+## [1] &quot;The validate error value is 0.599342064428031&quot;
+## [1] &quot;The iteration is 460&quot;
+## [1] &quot;The error value is 0.556800096947274&quot;
+## [1] &quot;The validate error value is 0.600831729873999&quot;
+## [1] &quot;The iteration is 470&quot;
+## [1] &quot;The error value is 0.557260101868832&quot;
+## [1] &quot;The validate error value is 0.601555872799123&quot;
+## [1] &quot;The iteration is 480&quot;
+## [1] &quot;The error value is 0.557706504494322&quot;
+## [1] &quot;The validate error value is 0.602114497341361&quot;
+## [1] &quot;The iteration is 490&quot;
+## [1] &quot;The error value is 0.558081185922366&quot;
+## [1] &quot;The validate error value is 0.603045538245091&quot;
+## [1] &quot;The iteration is 500&quot;
+## [1] &quot;The error value is 0.558546137133403&quot;
+## [1] &quot;The validate error value is 0.603873130159518&quot;
+## [1] &quot;The iteration is 510&quot;
+## [1] &quot;The error value is 0.558976464318086&quot;
+## [1] &quot;The validate error value is 0.60453520369106&quot;
+## [1] &quot;The iteration is 520&quot;
+## [1] &quot;The error value is 0.559337543450062&quot;
+## [1] &quot;The validate error value is 0.605693832371258&quot;
+## [1] &quot;The iteration is 530&quot;
+## [1] &quot;The error value is 0.559734483180761&quot;
+## [1] &quot;The validate error value is 0.606211077317775&quot;
+## [1] &quot;The iteration is 540&quot;
+## [1] &quot;The error value is 0.56018954181284&quot;
+## [1] &quot;The validate error value is 0.606562803881406&quot;
+## [1] &quot;The iteration is 550&quot;
+## [1] &quot;The error value is 0.560716321642366&quot;
+## [1] &quot;The validate error value is 0.607411085593694&quot;
+## [1] &quot;The iteration is 560&quot;
+## [1] &quot;The error value is 0.561013099011113&quot;
+## [1] &quot;The validate error value is 0.608693853061056&quot;
+## [1] &quot;The iteration is 570&quot;
+## [1] &quot;The error value is 0.561416221603661&quot;
+## [1] &quot;The validate error value is 0.60914902861399&quot;
+## [1] &quot;The iteration is 580&quot;
+## [1] &quot;The error value is 0.561852731650193&quot;
+## [1] &quot;The validate error value is 0.609500755177622&quot;
+## [1] &quot;The iteration is 590&quot;
+## [1] &quot;The error value is 0.562333758302038&quot;
+## [1] &quot;The validate error value is 0.610162828709163&quot;
+## [1] &quot;The iteration is 600&quot;
+## [1] &quot;The error value is 0.562710912874821&quot;
+## [1] &quot;The validate error value is 0.611073179815033&quot;
+## [1] &quot;The iteration is 610&quot;
+## [1] &quot;The error value is 0.563043550842291&quot;
+## [1] &quot;The validate error value is 0.611755943144435&quot;
+## [1] &quot;The iteration is 620&quot;
+## [1] &quot;The error value is 0.563379898526871&quot;
+## [1] &quot;The validate error value is 0.612169739101649&quot;
+## [1] &quot;The iteration is 630&quot;
+## [1] &quot;The error value is 0.563766945678612&quot;
+## [1] &quot;The validate error value is 0.61250077586742&quot;
+## [1] &quot;The iteration is 640&quot;
+## [1] &quot;The error value is 0.564037755027594&quot;
+## [1] &quot;The validate error value is 0.613390437175429&quot;
+## [1] &quot;The iteration is 650&quot;
+## [1] &quot;The error value is 0.564365446705586&quot;
+## [1] &quot;The validate error value is 0.613804233132642&quot;
+## [1] &quot;The iteration is 660&quot;
+## [1] &quot;The error value is 0.564699321245426&quot;
+## [1] &quot;The validate error value is 0.614507686259905&quot;
+## [1] &quot;The iteration is 670&quot;
+## [1] &quot;The error value is 0.56506905638399&quot;
+## [1] &quot;The validate error value is 0.614735274036373&quot;
+## [1] &quot;The iteration is 680&quot;
+## [1] &quot;The error value is 0.565396748061982&quot;
+## [1] &quot;The validate error value is 0.615252518982889&quot;
+## [1] &quot;The iteration is 690&quot;
+## [1] &quot;The error value is 0.565762773483437&quot;
+## [1] &quot;The validate error value is 0.616162870088759&quot;
+## [1] &quot;The iteration is 700&quot;
+## [1] &quot;The error value is 0.566078099437731&quot;
+## [1] &quot;The validate error value is 0.616411147663087&quot;
+## [1] &quot;The iteration is 710&quot;
+## [1] &quot;The error value is 0.566347672214343&quot;
+## [1] &quot;The validate error value is 0.616783564024579&quot;
+## [1] &quot;The iteration is 720&quot;
+## [1] &quot;The error value is 0.566654342162048&quot;
+## [1] &quot;The validate error value is 0.617362878364678&quot;
+## [1] &quot;The iteration is 730&quot;
+## [1] &quot;The error value is 0.567064884188815&quot;
+## [1] &quot;The validate error value is 0.617962882502638&quot;
+## [1] &quot;The iteration is 740&quot;
+## [1] &quot;The error value is 0.567396285583916&quot;
+## [1] &quot;The validate error value is 0.618169780481245&quot;
+## [1] &quot;The iteration is 750&quot;
+## [1] &quot;The error value is 0.56787854880813&quot;
+## [1] &quot;The validate error value is 0.618831854012786&quot;
+## [1] &quot;The iteration is 760&quot;
+## [1] &quot;The error value is 0.568201294196642&quot;
+## [1] &quot;The validate error value is 0.619390478555024&quot;
+## [1] &quot;The iteration is 770&quot;
+## [1] &quot;The error value is 0.568595760782602&quot;
+## [1] &quot;The validate error value is 0.62017669087373&quot;
+## [1] &quot;The iteration is 780&quot;
+## [1] &quot;The error value is 0.568951893625098&quot;
+## [1] &quot;The validate error value is 0.620756005213829&quot;
+## [1] &quot;The iteration is 790&quot;
+## [1] &quot;The error value is 0.569383457382152&quot;
+## [1] &quot;The validate error value is 0.620652556224526&quot;
+## [1] &quot;The iteration is 800&quot;
+## [1] &quot;The error value is 0.569829860007642&quot;
+## [1] &quot;The validate error value is 0.621004282788157&quot;
+## [1] &quot;The iteration is 810&quot;
+## [1] &quot;The error value is 0.570190939139618&quot;
+## [1] &quot;The validate error value is 0.621335319553928&quot;
+## [1] &quot;The iteration is 820&quot;
+## [1] &quot;The error value is 0.570491426225474&quot;
+## [1] &quot;The validate error value is 0.621418078745371&quot;
+## [1] &quot;The iteration is 830&quot;
+## [1] &quot;The error value is 0.570822827620575&quot;
+## [1] &quot;The validate error value is 0.621687046117559&quot;
+## [1] &quot;The iteration is 840&quot;
+## [1] &quot;The error value is 0.571208638199946&quot;
+## [1] &quot;The validate error value is 0.621956013489748&quot;
+## [1] &quot;The iteration is 850&quot;
+## [1] &quot;The error value is 0.571648857963588&quot;
+## [1] &quot;The validate error value is 0.622183601266216&quot;
+## [1] &quot;The iteration is 860&quot;
+## [1] &quot;The error value is 0.572134830904911&quot;
+## [1] &quot;The validate error value is 0.622224980861937&quot;
+## [1] &quot;The iteration is 870&quot;
+## [1] &quot;The error value is 0.572604728405428&quot;
+## [1] &quot;The validate error value is 0.622535327829847&quot;
+## [1] &quot;The iteration is 880&quot;
+## [1] &quot;The error value is 0.573061023609876&quot;
+## [1] &quot;The validate error value is 0.623052572776364&quot;
+## [1] &quot;The iteration is 890&quot;
+## [1] &quot;The error value is 0.573580384005184&quot;
+## [1] &quot;The validate error value is 0.623487058531438&quot;
+## [1] &quot;The iteration is 900&quot;
+## [1] &quot;The error value is 0.573943936281899&quot;
+## [1] &quot;The validate error value is 0.623714646307906&quot;
+## [1] &quot;The iteration is 910&quot;
+## [1] &quot;The error value is 0.574405177775827&quot;
+## [1] &quot;The validate error value is 0.623652576914324&quot;
+## [1] &quot;The iteration is 920&quot;
+## [1] &quot;The error value is 0.574920828454025&quot;
+## [1] &quot;The validate error value is 0.624045683073676&quot;
+## [1] &quot;The iteration is 930&quot;
+## [1] &quot;The error value is 0.575385779665062&quot;
+## [1] &quot;The validate error value is 0.624087062669398&quot;
+## [1] &quot;The iteration is 940&quot;
+## [1] &quot;The error value is 0.575859386882688&quot;
+## [1] &quot;The validate error value is 0.624480168828751&quot;
+## [1] &quot;The iteration is 950&quot;
+## [1] &quot;The error value is 0.576381220422735&quot;
+## [1] &quot;The validate error value is 0.624707756605218&quot;
+## [1] &quot;The iteration is 960&quot;
+## [1] &quot;The error value is 0.576832569337704&quot;
+## [1] &quot;The validate error value is 0.624790515796661&quot;
+## [1] &quot;The iteration is 970&quot;
+## [1] &quot;The error value is 0.577312359417179&quot;
+## [1] &quot;The validate error value is 0.624604307615915&quot;
+## [1] &quot;The iteration is 980&quot;
+## [1] &quot;The error value is 0.577742686601862&quot;
+## [1] &quot;The validate error value is 0.624811205594521&quot;
+## [1] &quot;The iteration is 990&quot;
+## [1] &quot;The error value is 0.57820269152342&quot;
+## [1] &quot;The validate error value is 0.624935344381685&quot;
+## [1] &quot;The iteration is 1000&quot;
+## [1] &quot;The error value is 0.578691137609483&quot;
+## [1] &quot;The validate error value is 0.625225001551735&quot;
+## [1] &quot;The iteration is 1010&quot;
+## [1] &quot;The error value is 0.579198132281093&quot;
+## [1] &quot;The validate error value is 0.625493968923924&quot;
+## [1] &quot;The iteration is 1020&quot;
+## [1] &quot;The error value is 0.579675449215828&quot;
+## [1] &quot;The validate error value is 0.625804315891834&quot;
+## [1] &quot;The iteration is 1030&quot;
+## [1] &quot;The error value is 0.58022572392038&quot;
+## [1] &quot;The validate error value is 0.625907764881137&quot;
+## [1] &quot;The iteration is 1040&quot;
+## [1] &quot;The error value is 0.580694384848526&quot;
+## [1] &quot;The validate error value is 0.62599052407258&quot;
+## [1] &quot;The iteration is 1050&quot;
+## [1] &quot;The error value is 0.58117664807274&quot;
+## [1] &quot;The validate error value is 0.626176732253326&quot;
+## [1] &quot;The iteration is 1060&quot;
+## [1] &quot;The error value is 0.581773912527344&quot;
+## [1] &quot;The validate error value is 0.62630087104049&quot;
+## [1] &quot;The iteration is 1070&quot;
+## [1] &quot;The error value is 0.582310584935828&quot;
+## [1] &quot;The validate error value is 0.626342250636211&quot;
+## [1] &quot;The iteration is 1080&quot;
+## [1] &quot;The error value is 0.582778009291605&quot;
+## [1] &quot;The validate error value is 0.62630087104049&quot;
+## [1] &quot;The iteration is 1090&quot;
+## [1] &quot;The error value is 0.583375273746208&quot;
+## [1] &quot;The validate error value is 0.626425009827654&quot;
+## [1] &quot;The iteration is 1100&quot;
+## [1] &quot;The error value is 0.583935441029719&quot;
+## [1] &quot;The validate error value is 0.626756046593425&quot;
+## [1] &quot;The iteration is 1110&quot;
+## [1] &quot;The error value is 0.584528995767213&quot;
+## [1] &quot;The validate error value is 0.627066393561335&quot;
+## [1] &quot;The iteration is 1120&quot;
+## [1] &quot;The error value is 0.585057012169109&quot;
+## [1] &quot;The validate error value is 0.627480189518548&quot;
+## [1] &quot;The iteration is 1130&quot;
+## [1] &quot;The error value is 0.585661696057931&quot;
+## [1] &quot;The validate error value is 0.627687087497155&quot;
+## [1] &quot;The iteration is 1140&quot;
+## [1] &quot;The error value is 0.58628616510467&quot;
+## [1] &quot;The validate error value is 0.627625018103573&quot;
+## [1] &quot;The iteration is 1150&quot;
+## [1] &quot;The error value is 0.586887139276383&quot;
+## [1] &quot;The validate error value is 0.627500879316409&quot;
+## [1] &quot;The iteration is 1160&quot;
+## [1] &quot;The error value is 0.587525210619189&quot;
+## [1] &quot;The validate error value is 0.627645707901434&quot;
+## [1] &quot;The iteration is 1170&quot;
+## [1] &quot;The error value is 0.588165755106735&quot;
+## [1] &quot;The validate error value is 0.62783191608218&quot;
+## [1] &quot;The iteration is 1180&quot;
+## [1] &quot;The error value is 0.588795170442953&quot;
+## [1] &quot;The validate error value is 0.628018124262926&quot;
+## [1] &quot;The iteration is 1190&quot;
+## [1] &quot;The error value is 0.589414693200212&quot;
+## [1] &quot;The validate error value is 0.628452610018&quot;
+## [1] &quot;The iteration is 1200&quot;
+## [1] &quot;The error value is 0.590026796523253&quot;
+## [1] &quot;The validate error value is 0.628493989613721&quot;
+## [1] &quot;The iteration is 1210&quot;
+## [1] &quot;The error value is 0.590710621043741&quot;
+## [1] &quot;The validate error value is 0.628556059007303&quot;
+## [1] &quot;The iteration is 1220&quot;
+## [1] &quot;The error value is 0.591296756347017&quot;
+## [1] &quot;The validate error value is 0.629176752943124&quot;
+## [1] &quot;The iteration is 1230&quot;
+## [1] &quot;The error value is 0.592027570617557&quot;
+## [1] &quot;The validate error value is 0.629321581528148&quot;
+## [1] &quot;The iteration is 1240&quot;
+## [1] &quot;The error value is 0.592814030644736&quot;
+## [1] &quot;The validate error value is 0.629507789708895&quot;
+## [1] &quot;The iteration is 1250&quot;
+## [1] &quot;The error value is 0.593547318060016&quot;
+## [1] &quot;The validate error value is 0.629549169304616&quot;
+## [1] &quot;The iteration is 1260&quot;
+## [1] &quot;The error value is 0.594283078620035&quot;
+## [1] &quot;The validate error value is 0.629611238698198&quot;
+## [1] &quot;The iteration is 1270&quot;
+## [1] &quot;The error value is 0.595043570627449&quot;
+## [1] &quot;The validate error value is 0.629735377485362&quot;
+## [1] &quot;The iteration is 1280&quot;
+## [1] &quot;The error value is 0.595780567759838&quot;
+## [1] &quot;The validate error value is 0.629859516272526&quot;
+## [1] &quot;The iteration is 1290&quot;
+## [1] &quot;The error value is 0.596533640333034&quot;
+## [1] &quot;The validate error value is 0.629611238698198&quot;
+## [1] &quot;The iteration is 1300&quot;
+## [1] &quot;The error value is 0.597102463623132&quot;
+## [1] &quot;The validate error value is 0.629693997889641&quot;
+## [1] &quot;The iteration is 1310&quot;
+## [1] &quot;The error value is 0.597827095031823&quot;
+## [1] &quot;The validate error value is 0.629818136676805&quot;
+## [1] &quot;The iteration is 1320&quot;
+## [1] &quot;The error value is 0.598655598519576&quot;
+## [1] &quot;The validate error value is 0.629921585666108&quot;
+## [1] &quot;The iteration is 1330&quot;
+## [1] &quot;The error value is 0.599472972856&quot;
+## [1] &quot;The validate error value is 0.629921585666108&quot;
+## [1] &quot;The iteration is 1340&quot;
+## [1] &quot;The error value is 0.600261906027919&quot;
+## [1] &quot;The validate error value is 0.630397451016904&quot;
+## [1] &quot;The iteration is 1350&quot;
+## [1] &quot;The error value is 0.601120087252546&quot;
+## [1] &quot;The validate error value is 0.630625038793371&quot;
+## [1] &quot;The iteration is 1360&quot;
+## [1] &quot;The error value is 0.601891708411289&quot;
+## [1] &quot;The validate error value is 0.630811246974117&quot;
+## [1] &quot;The iteration is 1370&quot;
+## [1] &quot;The error value is 0.602618812964719&quot;
+## [1] &quot;The validate error value is 0.631183663335609&quot;
+## [1] &quot;The iteration is 1380&quot;
+## [1] &quot;The error value is 0.603384251261613&quot;
+## [1] &quot;The validate error value is 0.631121593942027&quot;
+## [1] &quot;The iteration is 1390&quot;
+## [1] &quot;The error value is 0.60424366905861&quot;
+## [1] &quot;The validate error value is 0.631018144952724&quot;
+## [1] &quot;The iteration is 1400&quot;
+## [1] &quot;The error value is 0.605040021664748&quot;
+## [1] &quot;The validate error value is 0.631162973537749&quot;
+## [1] &quot;The iteration is 1410&quot;
+## [1] &quot;The error value is 0.60575847021159&quot;
+## [1] &quot;The validate error value is 0.631080214346306&quot;
+## [1] &quot;The iteration is 1420&quot;
+## [1] &quot;The error value is 0.606525145080853&quot;
+## [1] &quot;The validate error value is 0.631080214346306&quot;
+## [1] &quot;The iteration is 1430&quot;
+## [1] &quot;The error value is 0.607301712529075&quot;
+## [1] &quot;The validate error value is 0.63089400616556&quot;
+## [1] &quot;The iteration is 1440&quot;
+## [1] &quot;The error value is 0.608094355418104&quot;
+## [1] &quot;The validate error value is 0.630976765357002&quot;
+## [1] &quot;The iteration is 1450&quot;
+## [1] &quot;The error value is 0.608914202899268&quot;
+## [1] &quot;The validate error value is 0.631100904144167&quot;
+## [1] &quot;The iteration is 1460&quot;
+## [1] &quot;The error value is 0.60963141487374&quot;
+## [1] &quot;The validate error value is 0.63120435313347&quot;
+## [1] &quot;The iteration is 1470&quot;
+## [1] &quot;The error value is 0.610372121723238&quot;
+## [1] &quot;The validate error value is 0.63120435313347&quot;
+## [1] &quot;The iteration is 1480&quot;
+## [1] &quot;The error value is 0.611214227507058&quot;
+## [1] &quot;The validate error value is 0.631287112324913&quot;
+## [1] &quot;The iteration is 1490&quot;
+## [1] &quot;The error value is 0.611968536652623&quot;
+## [1] &quot;The validate error value is 0.63182504706929&quot;
+## [1] &quot;The iteration is 1500&quot;
+## [1] &quot;The error value is 0.612700587495533&quot;
+## [1] &quot;The validate error value is 0.631907806260733&quot;
+## [1] &quot;The iteration is 1510&quot;
+## [1] &quot;The error value is 0.613474681799015&quot;
+## [1] &quot;The validate error value is 0.631804357271429&quot;
+## [1] &quot;The iteration is 1520&quot;
+## [1] &quot;The error value is 0.614110279997082&quot;
+## [1] &quot;The validate error value is 0.631949185856454&quot;
+## [1] &quot;The iteration is 1530&quot;
+## [1] &quot;The error value is 0.614914052037439&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1540&quot;
+## [1] &quot;The error value is 0.615728953229123&quot;
+## [1] &quot;The validate error value is 0.631907806260733&quot;
+## [1] &quot;The iteration is 1550&quot;
+## [1] &quot;The error value is 0.616388046302216&quot;
+## [1] &quot;The validate error value is 0.631804357271429&quot;
+## [1] &quot;The iteration is 1560&quot;
+## [1] &quot;The error value is 0.617090419408251&quot;
+## [1] &quot;The validate error value is 0.631949185856454&quot;
+## [1] &quot;The iteration is 1570&quot;
+## [1] &quot;The error value is 0.617801448520874&quot;
+## [1] &quot;The validate error value is 0.631700908282126&quot;
+## [1] &quot;The iteration is 1580&quot;
+## [1] &quot;The error value is 0.61860769370597&quot;
+## [1] &quot;The validate error value is 0.631494010303519&quot;
+## [1] &quot;The iteration is 1590&quot;
+## [1] &quot;The error value is 0.619178990140808&quot;
+## [1] &quot;The validate error value is 0.631618149090683&quot;
+## [1] &quot;The iteration is 1600&quot;
+## [1] &quot;The error value is 0.619894965542911&quot;
+## [1] &quot;The validate error value is 0.631597459292823&quot;
+## [1] &quot;The iteration is 1610&quot;
+## [1] &quot;The error value is 0.62057260720155&quot;
+## [1] &quot;The validate error value is 0.631700908282126&quot;
+## [1] &quot;The iteration is 1620&quot;
+## [1] &quot;The error value is 0.621195839675919&quot;
+## [1] &quot;The validate error value is 0.631721598079987&quot;
+## [1] &quot;The iteration is 1630&quot;
+## [1] &quot;The error value is 0.621830201301616&quot;
+## [1] &quot;The validate error value is 0.631990565452176&quot;
+## [1] &quot;The iteration is 1640&quot;
+## [1] &quot;The error value is 0.622446014341766&quot;
+## [1] &quot;The validate error value is 0.6321353940372&quot;
+## [1] &quot;The iteration is 1650&quot;
+## [1] &quot;The error value is 0.623070483388505&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1660&quot;
+## [1] &quot;The error value is 0.623644252968083&quot;
+## [1] &quot;The validate error value is 0.631990565452176&quot;
+## [1] &quot;The iteration is 1670&quot;
+## [1] &quot;The error value is 0.624305819185915&quot;
+## [1] &quot;The validate error value is 0.631949185856454&quot;
+## [1] &quot;The iteration is 1680&quot;
+## [1] &quot;The error value is 0.624884535054972&quot;
+## [1] &quot;The validate error value is 0.63211470423934&quot;
+## [1] &quot;The iteration is 1690&quot;
+## [1] &quot;The error value is 0.625434809759524&quot;
+## [1] &quot;The validate error value is 0.631969875654315&quot;
+## [1] &quot;The iteration is 1700&quot;
+## [1] &quot;The error value is 0.625952933582461&quot;
+## [1] &quot;The validate error value is 0.631949185856454&quot;
+## [1] &quot;The iteration is 1710&quot;
+## [1] &quot;The error value is 0.62641170193165&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1720&quot;
+## [1] &quot;The error value is 0.626966922925681&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1730&quot;
+## [1] &quot;The error value is 0.627404669544583&quot;
+## [1] &quot;The validate error value is 0.631762977675708&quot;
+## [1] &quot;The iteration is 1740&quot;
+## [1] &quot;The error value is 0.62792650308463&quot;
+## [1] &quot;The validate error value is 0.631576769494962&quot;
+## [1] &quot;The iteration is 1750&quot;
+## [1] &quot;The error value is 0.628448336624677&quot;
+## [1] &quot;The validate error value is 0.63182504706929&quot;
+## [1] &quot;The iteration is 1760&quot;
+## [1] &quot;The error value is 0.628949148434438&quot;
+## [1] &quot;The validate error value is 0.631866426665011&quot;
+## [1] &quot;The iteration is 1770&quot;
+## [1] &quot;The error value is 0.629410389928365&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1780&quot;
+## [1] &quot;The error value is 0.629849373119637&quot;
+## [1] &quot;The validate error value is 0.631969875654315&quot;
+## [1] &quot;The iteration is 1790&quot;
+## [1] &quot;The error value is 0.630287119738539&quot;
+## [1] &quot;The validate error value is 0.632259532824364&quot;
+## [1] &quot;The iteration is 1800&quot;
+## [1] &quot;The error value is 0.630661801166582&quot;
+## [1] &quot;The validate error value is 0.632280222622225&quot;
+## [1] &quot;The iteration is 1810&quot;
+## [1] &quot;The error value is 0.631072343193349&quot;
+## [1] &quot;The validate error value is 0.632569879792274&quot;
+## [1] &quot;The iteration is 1820&quot;
+## [1] &quot;The error value is 0.631407454305559&quot;
+## [1] &quot;The validate error value is 0.632569879792274&quot;
+## [1] &quot;The iteration is 1830&quot;
+## [1] &quot;The error value is 0.631774716299384&quot;
+## [1] &quot;The validate error value is 0.632569879792274&quot;
+## [1] &quot;The iteration is 1840&quot;
+## [1] &quot;The error value is 0.63213455885899&quot;
+## [1] &quot;The validate error value is 0.632569879792274&quot;
+## [1] &quot;The iteration is 1850&quot;
+## [1] &quot;The error value is 0.632504293997554&quot;
+## [1] &quot;The validate error value is 0.632631949185856&quot;
+## [1] &quot;The iteration is 1860&quot;
+## [1] &quot;The error value is 0.632778813063645&quot;
+## [1] &quot;The validate error value is 0.632611259387996&quot;
+## [1] &quot;The iteration is 1870&quot;
+## [1] &quot;The error value is 0.633002632662575&quot;
+## [1] &quot;The validate error value is 0.632362981813668&quot;
+## [1] &quot;The iteration is 1880&quot;
+## [1] &quot;The error value is 0.633270968866817&quot;
+## [1] &quot;The validate error value is 0.632259532824364&quot;
+## [1] &quot;The iteration is 1890&quot;
+## [1] &quot;The error value is 0.633645650294861&quot;
+## [1] &quot;The validate error value is 0.632197463430782&quot;
+## [1] &quot;The iteration is 1900&quot;
+## [1] &quot;The error value is 0.633995600275508&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1910&quot;
+## [1] &quot;The error value is 0.634204581006001&quot;
+## [1] &quot;The validate error value is 0.63211470423934&quot;
+## [1] &quot;The iteration is 1920&quot;
+## [1] &quot;The error value is 0.634442002900999&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1930&quot;
+## [1] &quot;The error value is 0.634688080802585&quot;
+## [1] &quot;The validate error value is 0.631949185856454&quot;
+## [1] &quot;The iteration is 1940&quot;
+## [1] &quot;The error value is 0.635018245625316&quot;
+## [1] &quot;The validate error value is 0.632031945047897&quot;
+## [1] &quot;The iteration is 1950&quot;
+## [1] &quot;The error value is 0.635207441197892&quot;
+## [1] &quot;The validate error value is 0.632300912420086&quot;
+## [1] &quot;The iteration is 1960&quot;
+## [1] &quot;The error value is 0.635454755671848&quot;
+## [1] &quot;The validate error value is 0.632528500196553&quot;
+## [1] &quot;The iteration is 1970&quot;
+## [1] &quot;The error value is 0.635643951244425&quot;
+## [1] &quot;The validate error value is 0.632404361409389&quot;
+## [1] &quot;The iteration is 1980&quot;
+## [1] &quot;The error value is 0.635883846284162&quot;
+## [1] &quot;The validate error value is 0.632466430802971&quot;
+## [1] &quot;The iteration is 1990&quot;
+## [1] &quot;The error value is 0.636068095567259&quot;
+## [1] &quot;The validate error value is 0.632383671611528&quot;
+## [1] &quot;The iteration is 2000&quot;
+## [1] &quot;The error value is 0.636257291139835&quot;
+## [1] &quot;The validate error value is 0.632300912420086&quot;
+## [1] &quot;The iteration is 2010&quot;
+## [1] &quot;The error value is 0.636383421521553&quot;
+## [1] &quot;The validate error value is 0.632197463430782&quot;
+## [1] &quot;The iteration is 2020&quot;
+## [1] &quot;The error value is 0.636646811436316&quot;
+## [1] &quot;The validate error value is 0.632300912420086&quot;
+## [1] &quot;The iteration is 2030&quot;
+## [1] &quot;The error value is 0.63684713616022&quot;
+## [1] &quot;The validate error value is 0.63244574100511&quot;
+## [1] &quot;The iteration is 2040&quot;
+## [1] &quot;The error value is 0.63707219233152&quot;
+## [1] &quot;The validate error value is 0.632383671611528&quot;
+## [1] &quot;The iteration is 2050&quot;
+## [1] &quot;The error value is 0.637208215292196&quot;
+## [1] &quot;The validate error value is 0.632404361409389&quot;
+## [1] &quot;The iteration is 2060&quot;
+## [1] &quot;The error value is 0.63740977658847&quot;
+## [1] &quot;The validate error value is 0.632197463430782&quot;
+## [1] &quot;The iteration is 2070&quot;
+## [1] &quot;The error value is 0.637548272693885&quot;
+## [1] &quot;The validate error value is 0.632176773632922&quot;
+## [1] &quot;The iteration is 2080&quot;
+## [1] &quot;The error value is 0.637709027101957&quot;
+## [1] &quot;The validate error value is 0.632073324643618&quot;
+## [1] &quot;The iteration is 2090&quot;
+## [1] &quot;The error value is 0.637883383806096&quot;
+## [1] &quot;The validate error value is 0.6321353940372&quot;
+## [1] &quot;The iteration is 2100&quot;
+## [1] &quot;The error value is 0.638073815951042&quot;
+## [1] &quot;The validate error value is 0.63211470423934&quot;
+## [1] &quot;The iteration is 2110&quot;
+## [1] &quot;The error value is 0.638240753220962&quot;
+## [1] &quot;The validate error value is 0.632094014441479&quot;
+## [1] &quot;The iteration is 2120&quot;
+## [1] &quot;The error value is 0.638397797911924&quot;
+## [1] &quot;The validate error value is 0.632094014441479&quot;
+## [1] &quot;The iteration is 2130&quot;
+## [1] &quot;The error value is 0.638580810622651&quot;
+## [1] &quot;The validate error value is 0.632094014441479&quot;
+## [1] &quot;The iteration is 2140&quot;
+## [1] &quot;The error value is 0.638659951254317&quot;
+## [1] &quot;The validate error value is 0.632073324643618&quot;
+## [1] &quot;The iteration is 2150&quot;
+## [1] &quot;The error value is 0.63875764047153&quot;
+## [1] &quot;The validate error value is 0.632197463430782&quot;
+## [1] &quot;The iteration is 2160&quot;
+## [1] &quot;The error value is 0.638897373149315&quot;
+## [1] &quot;The validate error value is 0.632238843026504&quot;
+## [1] &quot;The iteration is 2170&quot;
+## [1] &quot;The error value is 0.639045761833688&quot;
+## [1] &quot;The validate error value is 0.632218153228643&quot;
+## [1] &quot;The iteration is 2180&quot;
+## [1] &quot;The error value is 0.639137268189052&quot;
+## [1] &quot;The validate error value is 0.632238843026504&quot;
+## [1] &quot;The iteration is 2190&quot;
+## [1] &quot;The error value is 0.639272054577358&quot;
+## [1] &quot;The validate error value is 0.632259532824364&quot;
+## [1] &quot;The iteration is 2200&quot;
+## [1] &quot;The error value is 0.639380872945899&quot;
+## [1] &quot;The validate error value is 0.632383671611528&quot;
+## [1] &quot;The iteration is 2210&quot;
+## [1] &quot;The error value is 0.639438991847278&quot;
+## [1] &quot;The validate error value is 0.632383671611528&quot;
+## [1] &quot;The iteration is 2220&quot;
+## [1] &quot;The error value is 0.639516895906574&quot;
+## [1] &quot;The validate error value is 0.632362981813668&quot;
+## [1] &quot;The iteration is 2230&quot;
+## [1] &quot;The error value is 0.639668994308057&quot;
+## [1] &quot;The validate error value is 0.632404361409389&quot;
+## [1] &quot;The iteration is 2240&quot;
+## [1] &quot;The error value is 0.639746898367354&quot;
+## [1] &quot;The validate error value is 0.632321602217946&quot;
+## [1] &quot;The iteration is 2250&quot;
+## [1] &quot;The error value is 0.639840877867457&quot;
+## [1] &quot;The validate error value is 0.632466430802971&quot;
+## [1] &quot;The iteration is 2260&quot;
+## [1] &quot;The error value is 0.639926201360972&quot;
+## [1] &quot;The validate error value is 0.632569879792274&quot;
+## [1] &quot;The iteration is 2270&quot;
+## [1] &quot;The error value is 0.640022654005814&quot;
+## [1] &quot;The validate error value is 0.63242505120725&quot;
+## [1] &quot;The iteration is 2280&quot;
+## [1] &quot;The error value is 0.640068407183496&quot;
+## [1] &quot;The validate error value is 0.632487120600832&quot;
+## [1] &quot;The iteration is 2290&quot;
+## [1] &quot;The error value is 0.640184644986255&quot;
+## [1] &quot;The validate error value is 0.632611259387996&quot;
+## [1] &quot;The iteration is 2300&quot;
+## [1] &quot;The error value is 0.640333033670629&quot;
+## [1] &quot;The validate error value is 0.632756087973021&quot;
+## [1] &quot;The iteration is 2310&quot;
+## [1] &quot;The error value is 0.640401045150967&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2320&quot;
+## [1] &quot;The error value is 0.640504917230028&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2330&quot;
+## [1] &quot;The error value is 0.640582821289325&quot;
+## [1] &quot;The validate error value is 0.632590569590135&quot;
+## [1] &quot;The iteration is 2340&quot;
+## [1] &quot;The error value is 0.640634757328855&quot;
+## [1] &quot;The validate error value is 0.632590569590135&quot;
+## [1] &quot;The iteration is 2350&quot;
+## [1] &quot;The error value is 0.640706478526303&quot;
+## [1] &quot;The validate error value is 0.63273539817516&quot;
+## [1] &quot;The iteration is 2360&quot;
+## [1] &quot;The error value is 0.640780672868489&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2370&quot;
+## [1] &quot;The error value is 0.640785619157968&quot;
+## [1] &quot;The validate error value is 0.632797467568742&quot;
+## [1] &quot;The iteration is 2380&quot;
+## [1] &quot;The error value is 0.640869706079113&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2390&quot;
+## [1] &quot;The error value is 0.64094266384893&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2400&quot;
+## [1] &quot;The error value is 0.640994599888461&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2410&quot;
+## [1] &quot;The error value is 0.641037879921403&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2420&quot;
+## [1] &quot;The error value is 0.641042826210883&quot;
+## [1] &quot;The validate error value is 0.632797467568742&quot;
+## [1] &quot;The iteration is 2430&quot;
+## [1] &quot;The error value is 0.641093525678044&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2440&quot;
+## [1] &quot;The error value is 0.641146698289944&quot;
+## [1] &quot;The validate error value is 0.632818157366603&quot;
+## [1] &quot;The iteration is 2450&quot;
+## [1] &quot;The error value is 0.641164010303121&quot;
+## [1] &quot;The validate error value is 0.632776777770881&quot;
+## [1] &quot;The iteration is 2460&quot;
+## [1] &quot;The error value is 0.641235731500568&quot;
+## [1] &quot;The validate error value is 0.632880226760185&quot;
+## [1] &quot;The iteration is 2470&quot;
+## [1] &quot;The error value is 0.641272828671662&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2480&quot;
+## [1] &quot;The error value is 0.641292613829578&quot;
+## [1] &quot;The validate error value is 0.632776777770881&quot;
+## [1] &quot;The iteration is 2490&quot;
+## [1] &quot;The error value is 0.641300033263797&quot;
+## [1] &quot;The validate error value is 0.632652638983717&quot;
+## [1] &quot;The iteration is 2500&quot;
+## [1] &quot;The error value is 0.641353205875697&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2510&quot;
+## [1] &quot;The error value is 0.641385356757312&quot;
+## [1] &quot;The validate error value is 0.63273539817516&quot;
+## [1] &quot;The iteration is 2520&quot;
+## [1] &quot;The error value is 0.641442239086321&quot;
+## [1] &quot;The validate error value is 0.632673328781578&quot;
+## [1] &quot;The iteration is 2530&quot;
+## [1] &quot;The error value is 0.641458314527129&quot;
+## [1] &quot;The validate error value is 0.632652638983717&quot;
+## [1] &quot;The iteration is 2540&quot;
+## [1] &quot;The error value is 0.641483045974524&quot;
+## [1] &quot;The validate error value is 0.632631949185856&quot;
+## [1] &quot;The iteration is 2550&quot;
+## [1] &quot;The error value is 0.641522616290357&quot;
+## [1] &quot;The validate error value is 0.63273539817516&quot;
+## [1] &quot;The iteration is 2560&quot;
+## [1] &quot;The error value is 0.641554767171971&quot;
+## [1] &quot;The validate error value is 0.632756087973021&quot;
+## [1] &quot;The iteration is 2570&quot;
+## [1] &quot;The error value is 0.641631434658898&quot;
+## [1] &quot;The validate error value is 0.632776777770881&quot;
+## [1] &quot;The iteration is 2580&quot;
+## [1] &quot;The error value is 0.641680897553689&quot;
+## [1] &quot;The validate error value is 0.632714708377299&quot;
+## [1] &quot;The iteration is 2590&quot;
+## [1] &quot;The error value is 0.64173159702085&quot;
+## [1] &quot;The validate error value is 0.632714708377299&quot;
+## [1] &quot;The iteration is 2600&quot;
+## [1] &quot;The error value is 0.641748909034027&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2610&quot;
+## [1] &quot;The error value is 0.641778586770901&quot;
+## [1] &quot;The validate error value is 0.632631949185856&quot;
+## [1] &quot;The iteration is 2620&quot;
+## [1] &quot;The error value is 0.641831759382802&quot;
+## [1] &quot;The validate error value is 0.632590569590135&quot;
+## [1] &quot;The iteration is 2630&quot;
+## [1] &quot;The error value is 0.641856490830198&quot;
+## [1] &quot;The validate error value is 0.632590569590135&quot;
+## [1] &quot;The iteration is 2640&quot;
+## [1] &quot;The error value is 0.64190100743551&quot;
+## [1] &quot;The validate error value is 0.632673328781578&quot;
+## [1] &quot;The iteration is 2650&quot;
+## [1] &quot;The error value is 0.641925738882905&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2660&quot;
+## [1] &quot;The error value is 0.641950470330301&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2670&quot;
+## [1] &quot;The error value is 0.641966545771108&quot;
+## [1] &quot;The validate error value is 0.632714708377299&quot;
+## [1] &quot;The iteration is 2680&quot;
+## [1] &quot;The error value is 0.642030847534337&quot;
+## [1] &quot;The validate error value is 0.632652638983717&quot;
+## [1] &quot;The iteration is 2690&quot;
+## [1] &quot;The error value is 0.642071654422539&quot;
+## [1] &quot;The validate error value is 0.632507810398692&quot;
+## [1] &quot;The iteration is 2700&quot;
+## [1] &quot;The error value is 0.642091439580456&quot;
+## [1] &quot;The validate error value is 0.632487120600832&quot;
+## [1] &quot;The iteration is 2710&quot;
+## [1] &quot;The error value is 0.642114934455482&quot;
+## [1] &quot;The validate error value is 0.632549189994414&quot;
+## [1] &quot;The iteration is 2720&quot;
+## [1] &quot;The error value is 0.642160687633163&quot;
+## [1] &quot;The validate error value is 0.632528500196553&quot;
+## [1] &quot;The iteration is 2730&quot;
+## [1] &quot;The error value is 0.642199021376627&quot;
+## [1] &quot;The validate error value is 0.632466430802971&quot;
+## [1] &quot;The iteration is 2740&quot;
+## [1] &quot;The error value is 0.642206440810845&quot;
+## [1] &quot;The validate error value is 0.632528500196553&quot;
+## [1] &quot;The iteration is 2750&quot;
+## [1] &quot;The error value is 0.642211387100324&quot;
+## [1] &quot;The validate error value is 0.632569879792274&quot;
+## [1] &quot;The iteration is 2760&quot;
+## [1] &quot;The error value is 0.64223735512009&quot;
+## [1] &quot;The validate error value is 0.632652638983717&quot;
+## [1] &quot;The iteration is 2770&quot;
+## [1] &quot;The error value is 0.642268269429334&quot;
+## [1] &quot;The validate error value is 0.632631949185856&quot;
+## [1] &quot;The iteration is 2780&quot;
+## [1] &quot;The error value is 0.642273215718813&quot;
+## [1] &quot;The validate error value is 0.632652638983717&quot;
+## [1] &quot;The iteration is 2790&quot;
+## [1] &quot;The error value is 0.64229052773199&quot;
+## [1] &quot;The validate error value is 0.632694018579439&quot;
+## [1] &quot;The iteration is 2800&quot;
+## [1] &quot;The error value is 0.642343700343891&quot;
+## [1] &quot;The validate error value is 0.632818157366603&quot;
+## [1] &quot;The iteration is 2810&quot;
+## [1] &quot;The error value is 0.642359775784698&quot;
+## [1] &quot;The validate error value is 0.632776777770881&quot;
+## [1] &quot;The iteration is 2820&quot;
+## [1] &quot;The error value is 0.642365958646547&quot;
+## [1] &quot;The validate error value is 0.632818157366603&quot;
+## [1] &quot;The iteration is 2830&quot;
+## [1] &quot;The error value is 0.642374614653135&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2840&quot;
+## [1] &quot;The error value is 0.642382034087354&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2850&quot;
+## [1] &quot;The error value is 0.642424077547926&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2860&quot;
+## [1] &quot;The error value is 0.642436443271624&quot;
+## [1] &quot;The validate error value is 0.632797467568742&quot;
+## [1] &quot;The iteration is 2870&quot;
+## [1] &quot;The error value is 0.642435206699254&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2880&quot;
+## [1] &quot;The error value is 0.642456228429541&quot;
+## [1] &quot;The validate error value is 0.632797467568742&quot;
+## [1] &quot;The iteration is 2890&quot;
+## [1] &quot;The error value is 0.642473540442718&quot;
+## [1] &quot;The validate error value is 0.632776777770881&quot;
+## [1] &quot;The iteration is 2900&quot;
+## [1] &quot;The error value is 0.642485906166415&quot;
+## [1] &quot;The validate error value is 0.632797467568742&quot;
+## [1] &quot;The iteration is 2910&quot;
+## [1] &quot;The error value is 0.642541551923056&quot;
+## [1] &quot;The validate error value is 0.632818157366603&quot;
+## [1] &quot;The iteration is 2920&quot;
+## [1] &quot;The error value is 0.642587305100737&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2930&quot;
+## [1] &quot;The error value is 0.642600907396805&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2940&quot;
+## [1] &quot;The error value is 0.64263058513368&quot;
+## [1] &quot;The validate error value is 0.632818157366603&quot;
+## [1] &quot;The iteration is 2950&quot;
+## [1] &quot;The error value is 0.642654080008705&quot;
+## [1] &quot;The validate error value is 0.632818157366603&quot;
+## [1] &quot;The iteration is 2960&quot;
+## [1] &quot;The error value is 0.642673865166622&quot;
+## [1] &quot;The validate error value is 0.632756087973021&quot;
+## [1] &quot;The iteration is 2970&quot;
+## [1] &quot;The error value is 0.642691177179799&quot;
+## [1] &quot;The validate error value is 0.632838847164463&quot;
+## [1] &quot;The iteration is 2980&quot;
+## [1] &quot;The error value is 0.642712198910085&quot;
+## [1] &quot;The validate error value is 0.632859536962324&quot;
+## [1] &quot;The iteration is 2990&quot;
+## [1] &quot;The error value is 0.642724564633783&quot;
+## [1] &quot;The validate error value is 0.632921606355906&quot;
+## [1] &quot;The iteration is 3000&quot;
+## [1] &quot;The error value is 0.642728274350892&quot;
+## [1] &quot;The validate error value is 0.632962985951627&quot;
+## [1] &quot;The iteration is 3010&quot;
+## [1] &quot;The error value is 0.642751769225918&quot;
+## [1] &quot;The validate error value is 0.632942296153767&quot;
+## [1] &quot;The iteration is 3020&quot;
+## [1] &quot;The error value is 0.642770317811465&quot;
+## [1] &quot;The validate error value is 0.632942296153767&quot;
+## [1] &quot;The iteration is 3030&quot;
+## [1] &quot;The error value is 0.642790102969381&quot;
+## [1] &quot;The validate error value is 0.632983675749488&quot;
+## [1] &quot;The iteration is 3040&quot;
+## [1] &quot;The error value is 0.64279875897597&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3050&quot;
+## [1] &quot;The error value is 0.642808651554928&quot;
+## [1] &quot;The validate error value is 0.632942296153767&quot;
+## [1] &quot;The iteration is 3060&quot;
+## [1] &quot;The error value is 0.64279628583123&quot;
+## [1] &quot;The validate error value is 0.632983675749488&quot;
+## [1] &quot;The iteration is 3070&quot;
+## [1] &quot;The error value is 0.642804941837819&quot;
+## [1] &quot;The validate error value is 0.63304574514307&quot;
+## [1] &quot;The iteration is 3080&quot;
+## [1] &quot;The error value is 0.642828436712844&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3090&quot;
+## [1] &quot;The error value is 0.642830909857584&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3100&quot;
+## [1] &quot;The error value is 0.642859351022089&quot;
+## [1] &quot;The validate error value is 0.633025055345209&quot;
+## [1] &quot;The iteration is 3110&quot;
+## [1] &quot;The error value is 0.642863060739198&quot;
+## [1] &quot;The validate error value is 0.632962985951627&quot;
+## [1] &quot;The iteration is 3120&quot;
+## [1] &quot;The error value is 0.642885319041854&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3130&quot;
+## [1] &quot;The error value is 0.642892738476073&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3140&quot;
+## [1] &quot;The error value is 0.642918706495838&quot;
+## [1] &quot;The validate error value is 0.633025055345209&quot;
+## [1] &quot;The iteration is 3150&quot;
+## [1] &quot;The error value is 0.642934781936645&quot;
+## [1] &quot;The validate error value is 0.632983675749488&quot;
+## [1] &quot;The iteration is 3160&quot;
+## [1] &quot;The error value is 0.642940964798494&quot;
+## [1] &quot;The validate error value is 0.632983675749488&quot;
+## [1] &quot;The iteration is 3170&quot;
+## [1] &quot;The error value is 0.642973115680109&quot;
+## [1] &quot;The validate error value is 0.632942296153767&quot;
+## [1] &quot;The iteration is 3180&quot;
+## [1] &quot;The error value is 0.642973115680109&quot;
+## [1] &quot;The validate error value is 0.632942296153767&quot;
+## [1] &quot;The iteration is 3190&quot;
+## [1] &quot;The error value is 0.64296322310115&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3200&quot;
+## [1] &quot;The error value is 0.642969405962999&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3210&quot;
+## [1] &quot;The error value is 0.642981771686697&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3220&quot;
+## [1] &quot;The error value is 0.64301886885779&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3230&quot;
+## [1] &quot;The error value is 0.643028761436749&quot;
+## [1] &quot;The validate error value is 0.632921606355906&quot;
+## [1] &quot;The iteration is 3240&quot;
+## [1] &quot;The error value is 0.643033707726228&quot;
+## [1] &quot;The validate error value is 0.633004365547349&quot;
+## [1] &quot;The iteration is 3250&quot;
+## [1] &quot;The error value is 0.643032471153858&quot;
+## [1] &quot;The validate error value is 0.63304574514307&quot;
+## [1] &quot;The iteration is 3260&quot;
+## [1] &quot;The error value is 0.643033707726228&quot;
+## [1] &quot;The validate error value is 0.633149194132373&quot;
+## [1] &quot;The iteration is 3270&quot;
+## [1] &quot;The error value is 0.643034944298598&quot;
+## [1] &quot;The validate error value is 0.633128504334513&quot;
+## [1] &quot;The iteration is 3280&quot;
+## [1] &quot;The error value is 0.643064622035472&quot;
+## [1] &quot;The validate error value is 0.633149194132373&quot;
+## [1] &quot;The iteration is 3290&quot;
+## [1] &quot;The error value is 0.643074514614431&quot;
+## [1] &quot;The validate error value is 0.633169883930234&quot;
+## [1] &quot;The iteration is 3300&quot;
+## [1] &quot;The error value is 0.643067095180212&quot;
+## [1] &quot;The validate error value is 0.633231953323816&quot;
+## [1] &quot;The iteration is 3310&quot;
+## [1] &quot;The error value is 0.643081934048649&quot;
+## [1] &quot;The validate error value is 0.633252643121677&quot;
+## [1] &quot;The iteration is 3320&quot;
+## [1] &quot;The error value is 0.643104192351305&quot;
+## [1] &quot;The validate error value is 0.633294022717398&quot;
+## [1] &quot;The iteration is 3330&quot;
+## [1] &quot;The error value is 0.643106665496045&quot;
+## [1] &quot;The validate error value is 0.633294022717398&quot;
+## [1] &quot;The iteration is 3340&quot;
+## [1] &quot;The error value is 0.643112848357894&quot;
+## [1] &quot;The validate error value is 0.633314712515259&quot;
+## [1] &quot;The iteration is 3350&quot;
+## [1] &quot;The error value is 0.643148708956617&quot;
+## [1] &quot;The validate error value is 0.633335402313119&quot;
+## [1] &quot;The iteration is 3360&quot;
+## [1] &quot;The error value is 0.643158601535576&quot;
+## [1] &quot;The validate error value is 0.633335402313119&quot;
+## [1] &quot;The iteration is 3370&quot;
+## [1] &quot;The error value is 0.643161074680315&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3380&quot;
+## [1] &quot;The error value is 0.643177150121122&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3390&quot;
+## [1] &quot;The error value is 0.64318827927245&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3400&quot;
+## [1] &quot;The error value is 0.643183332982971&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3410&quot;
+## [1] &quot;The error value is 0.643199408423778&quot;
+## [1] &quot;The validate error value is 0.633397471706701&quot;
+## [1] &quot;The iteration is 3420&quot;
+## [1] &quot;The error value is 0.643213010719846&quot;
+## [1] &quot;The validate error value is 0.633397471706701&quot;
+## [1] &quot;The iteration is 3430&quot;
+## [1] &quot;The error value is 0.643227849588283&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3440&quot;
+## [1] &quot;The error value is 0.643232795877762&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3450&quot;
+## [1] &quot;The error value is 0.6432476347462&quot;
+## [1] &quot;The validate error value is 0.633397471706701&quot;
+## [1] &quot;The iteration is 3460&quot;
+## [1] &quot;The error value is 0.643257527325158&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3470&quot;
+## [1] &quot;The error value is 0.643285968489663&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3480&quot;
+## [1] &quot;The error value is 0.643279785627814&quot;
+## [1] &quot;The validate error value is 0.633397471706701&quot;
+## [1] &quot;The iteration is 3490&quot;
+## [1] &quot;The error value is 0.643294624496251&quot;
+## [1] &quot;The validate error value is 0.633376781908841&quot;
+## [1] &quot;The iteration is 3500&quot;
+## [1] &quot;The error value is 0.643294624496251&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3510&quot;
+## [1] &quot;The error value is 0.643309463364689&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3520&quot;
+## [1] &quot;The error value is 0.643314409654168&quot;
+## [1] &quot;The validate error value is 0.633480230898144&quot;
+## [1] &quot;The iteration is 3530&quot;
+## [1] &quot;The error value is 0.643323065660756&quot;
+## [1] &quot;The validate error value is 0.633480230898144&quot;
+## [1] &quot;The iteration is 3540&quot;
+## [1] &quot;The error value is 0.643318119371277&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3550&quot;
+## [1] &quot;The error value is 0.643321829088386&quot;
+## [1] &quot;The validate error value is 0.633438851302423&quot;
+## [1] &quot;The iteration is 3560&quot;
+## [1] &quot;The error value is 0.643311936509428&quot;
+## [1] &quot;The validate error value is 0.633438851302423&quot;
+## [1] &quot;The iteration is 3570&quot;
+## [1] &quot;The error value is 0.643314409654168&quot;
+## [1] &quot;The validate error value is 0.633418161504562&quot;
+## [1] &quot;The iteration is 3580&quot;
+## [1] &quot;The error value is 0.64330328050284&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3590&quot;
+## [1] &quot;The error value is 0.643290914779142&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3600&quot;
+## [1] &quot;The error value is 0.64330328050284&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3610&quot;
+## [1] &quot;The error value is 0.64330328050284&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3620&quot;
+## [1] &quot;The error value is 0.643311936509428&quot;
+## [1] &quot;The validate error value is 0.633500920696005&quot;
+## [1] &quot;The iteration is 3630&quot;
+## [1] &quot;The error value is 0.643314409654168&quot;
+## [1] &quot;The validate error value is 0.633480230898144&quot;
+## [1] &quot;The iteration is 3640&quot;
+## [1] &quot;The error value is 0.643326775377866&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3650&quot;
+## [1] &quot;The error value is 0.643340377673933&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3660&quot;
+## [1] &quot;The error value is 0.643336667956824&quot;
+## [1] &quot;The validate error value is 0.633438851302423&quot;
+## [1] &quot;The iteration is 3670&quot;
+## [1] &quot;The error value is 0.643334194812084&quot;
+## [1] &quot;The validate error value is 0.633459541100283&quot;
+## [1] &quot;The iteration is 3680&quot;
+## [1] &quot;The error value is 0.643328011950235&quot;
+## [1] &quot;The validate error value is 0.633480230898144&quot;
+## [1] &quot;The iteration is 3690&quot;
+## [1] &quot;The error value is 0.643330485094975&quot;
+## [1] &quot;The validate error value is 0.633542300291726&quot;
+## [1] &quot;The iteration is 3700&quot;
+## [1] &quot;The error value is 0.643329248522605&quot;
+## [1] &quot;The validate error value is 0.633542300291726&quot;
+## [1] &quot;The iteration is 3710&quot;
+## [1] &quot;The error value is 0.643339141101563&quot;
+## [1] &quot;The validate error value is 0.633521610493865&quot;
+## [1] &quot;The iteration is 3720&quot;
+## [1] &quot;The error value is 0.643350270252891&quot;
+## [1] &quot;The validate error value is 0.633562990089587&quot;
+## [1] &quot;The iteration is 3730&quot;
+## [1] &quot;The error value is 0.643346560535782&quot;
+## [1] &quot;The validate error value is 0.633583679887447&quot;
+## [1] &quot;The iteration is 3740&quot;
+## [1] &quot;The error value is 0.643352743397631&quot;
+## [1] &quot;The validate error value is 0.633583679887447&quot;
+## [1] &quot;The iteration is 3750&quot;
+## [1] &quot;The error value is 0.643362635976589&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3760&quot;
+## [1] &quot;The error value is 0.643362635976589&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3770&quot;
+## [1] &quot;The error value is 0.643352743397631&quot;
+## [1] &quot;The validate error value is 0.633562990089587&quot;
+## [1] &quot;The iteration is 3780&quot;
+## [1] &quot;The error value is 0.64335768968711&quot;
+## [1] &quot;The validate error value is 0.633542300291726&quot;
+## [1] &quot;The iteration is 3790&quot;
+## [1] &quot;The error value is 0.643363872548959&quot;
+## [1] &quot;The validate error value is 0.633542300291726&quot;
+## [1] &quot;The iteration is 3800&quot;
+## [1] &quot;The error value is 0.643378711417396&quot;
+## [1] &quot;The validate error value is 0.633562990089587&quot;
+## [1] &quot;The iteration is 3810&quot;
+## [1] &quot;The error value is 0.643383657706875&quot;
+## [1] &quot;The validate error value is 0.633583679887447&quot;
+## [1] &quot;The iteration is 3820&quot;
+## [1] &quot;The error value is 0.643384894279245&quot;
+## [1] &quot;The validate error value is 0.633583679887447&quot;
+## [1] &quot;The iteration is 3830&quot;
+## [1] &quot;The error value is 0.643396023430573&quot;
+## [1] &quot;The validate error value is 0.633583679887447&quot;
+## [1] &quot;The iteration is 3840&quot;
+## [1] &quot;The error value is 0.643396023430573&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3850&quot;
+## [1] &quot;The error value is 0.643388603996355&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3860&quot;
+## [1] &quot;The error value is 0.643400969720052&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3870&quot;
+## [1] &quot;The error value is 0.64341704516086&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3880&quot;
+## [1] &quot;The error value is 0.64341580858849&quot;
+## [1] &quot;The validate error value is 0.633625059483169&quot;
+## [1] &quot;The iteration is 3890&quot;
+## [1] &quot;The error value is 0.643410862299011&quot;
+## [1] &quot;The validate error value is 0.633645749281029&quot;
+## [1] &quot;The iteration is 3900&quot;
+## [1] &quot;The error value is 0.643421991450339&quot;
+## [1] &quot;The validate error value is 0.633645749281029&quot;
+## [1] &quot;The iteration is 3910&quot;
+## [1] &quot;The error value is 0.64341580858849&quot;
+## [1] &quot;The validate error value is 0.633625059483169&quot;
+## [1] &quot;The iteration is 3920&quot;
+## [1] &quot;The error value is 0.643424464595078&quot;
+## [1] &quot;The validate error value is 0.633625059483169&quot;
+## [1] &quot;The iteration is 3930&quot;
+## [1] &quot;The error value is 0.643435593746406&quot;
+## [1] &quot;The validate error value is 0.633604369685308&quot;
+## [1] &quot;The iteration is 3940&quot;
+## [1] &quot;The error value is 0.643431884029297&quot;
+## [1] &quot;The validate error value is 0.633645749281029&quot;
+## [1] &quot;The iteration is 3950&quot;
+## [1] &quot;The error value is 0.643446722897734&quot;
+## [1] &quot;The validate error value is 0.63366643907889&quot;
+## [1] &quot;The iteration is 3960&quot;
+## [1] &quot;The error value is 0.643445486325364&quot;
+## [1] &quot;The validate error value is 0.63366643907889&quot;
+## [1] &quot;The iteration is 3970&quot;
+## [1] &quot;The error value is 0.643440540035885&quot;
+## [1] &quot;The validate error value is 0.63366643907889&quot;
+## [1] &quot;The iteration is 3980&quot;
+## [1] &quot;The error value is 0.643450432614844&quot;
+## [1] &quot;The validate error value is 0.63366643907889&quot;
+## [1] &quot;The iteration is 3990&quot;
+## [1] &quot;The error value is 0.643449196042474&quot;
+## [1] &quot;The validate error value is 0.633687128876751&quot;
+## [1] &quot;The iteration is 4000&quot;
+## [1] &quot;The error value is 0.643450432614844&quot;
+## [1] &quot;The validate error value is 0.633707818674612&quot;
+## [1] &quot;The iteration is 4010&quot;
+## [1] &quot;The error value is 0.643459088621432&quot;
+## [1] &quot;The validate error value is 0.633728508472472&quot;
+## [1] &quot;The iteration is 4020&quot;
+## [1] &quot;The error value is 0.643459088621432&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4030&quot;
+## [1] &quot;The error value is 0.643461561766172&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4040&quot;
+## [1] &quot;The error value is 0.643460325193802&quot;
+## [1] &quot;The validate error value is 0.633811267663915&quot;
+## [1] &quot;The iteration is 4050&quot;
+## [1] &quot;The error value is 0.64346898120039&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4060&quot;
+## [1] &quot;The error value is 0.64347021777276&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4070&quot;
+## [1] &quot;The error value is 0.643464034910911&quot;
+## [1] &quot;The validate error value is 0.633728508472472&quot;
+## [1] &quot;The iteration is 4080&quot;
+## [1] &quot;The error value is 0.643465271483281&quot;
+## [1] &quot;The validate error value is 0.633728508472472&quot;
+## [1] &quot;The iteration is 4090&quot;
+## [1] &quot;The error value is 0.64347021777276&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4100&quot;
+## [1] &quot;The error value is 0.643475164062239&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4110&quot;
+## [1] &quot;The error value is 0.643476400634609&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4120&quot;
+## [1] &quot;The error value is 0.64347021777276&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4130&quot;
+## [1] &quot;The error value is 0.643477637206979&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4140&quot;
+## [1] &quot;The error value is 0.643480110351718&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4150&quot;
+## [1] &quot;The error value is 0.643481346924088&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4160&quot;
+## [1] &quot;The error value is 0.643478873779349&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4170&quot;
+## [1] &quot;The error value is 0.643482583496458&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4180&quot;
+## [1] &quot;The error value is 0.643482583496458&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4190&quot;
+## [1] &quot;The error value is 0.643485056641197&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4200&quot;
+## [1] &quot;The error value is 0.643490002930676&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4210&quot;
+## [1] &quot;The error value is 0.643486293213567&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4220&quot;
+## [1] &quot;The error value is 0.643480110351718&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4230&quot;
+## [1] &quot;The error value is 0.643473927489869&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4240&quot;
+## [1] &quot;The error value is 0.643477637206979&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4250&quot;
+## [1] &quot;The error value is 0.643480110351718&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4260&quot;
+## [1] &quot;The error value is 0.643487529785937&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4270&quot;
+## [1] &quot;The error value is 0.643491239503046&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4280&quot;
+## [1] &quot;The error value is 0.643488766358307&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4290&quot;
+## [1] &quot;The error value is 0.643501132082005&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4300&quot;
+## [1] &quot;The error value is 0.643515970950442&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4310&quot;
+## [1] &quot;The error value is 0.643520917239921&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4320&quot;
+## [1] &quot;The error value is 0.643518444095181&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4330&quot;
+## [1] &quot;The error value is 0.643511024660963&quot;
+## [1] &quot;The validate error value is 0.633749198270333&quot;
+## [1] &quot;The iteration is 4340&quot;
+## [1] &quot;The error value is 0.643508551516223&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4350&quot;
+## [1] &quot;The error value is 0.643499895509635&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4360&quot;
+## [1] &quot;The error value is 0.643502368654374&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4370&quot;
+## [1] &quot;The error value is 0.643498658937265&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4380&quot;
+## [1] &quot;The error value is 0.643511024660963&quot;
+## [1] &quot;The validate error value is 0.633769888068194&quot;
+## [1] &quot;The iteration is 4390&quot;
+## [1] &quot;The error value is 0.643509788088593&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4400&quot;
+## [1] &quot;The error value is 0.643514734378072&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4410&quot;
+## [1] &quot;The error value is 0.643518444095181&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4420&quot;
+## [1] &quot;The error value is 0.643519680667551&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4430&quot;
+## [1] &quot;The error value is 0.643523390384661&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4440&quot;
+## [1] &quot;The error value is 0.64352833667414&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4450&quot;
+## [1] &quot;The error value is 0.643520917239921&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4460&quot;
+## [1] &quot;The error value is 0.643513497805702&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4470&quot;
+## [1] &quot;The error value is 0.643515970950442&quot;
+## [1] &quot;The validate error value is 0.633790577866054&quot;
+## [1] &quot;The iteration is 4480&quot;
+## [1] &quot;The error value is 0.643504841799114&quot;
+## [1] &quot;The validate error value is 0.633811267663915&quot;
+## [1] &quot;The iteration is 4490&quot;
+## [1] &quot;The error value is 0.643499895509635&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4500&quot;
+## [1] &quot;The error value is 0.643494949220156&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4510&quot;
+## [1] &quot;The error value is 0.643494949220156&quot;
+## [1] &quot;The validate error value is 0.633852647259636&quot;
+## [1] &quot;The iteration is 4520&quot;
+## [1] &quot;The error value is 0.643497422364895&quot;
+## [1] &quot;The validate error value is 0.633852647259636&quot;
+## [1] &quot;The iteration is 4530&quot;
+## [1] &quot;The error value is 0.643503605226744&quot;
+## [1] &quot;The validate error value is 0.633852647259636&quot;
+## [1] &quot;The iteration is 4540&quot;
+## [1] &quot;The error value is 0.643502368654374&quot;
+## [1] &quot;The validate error value is 0.633852647259636&quot;
+## [1] &quot;The iteration is 4550&quot;
+## [1] &quot;The error value is 0.643507314943853&quot;
+## [1] &quot;The validate error value is 0.633852647259636&quot;
+## [1] &quot;The iteration is 4560&quot;
+## [1] &quot;The error value is 0.643522153812291&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4570&quot;
+## [1] &quot;The error value is 0.643517207522812&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4580&quot;
+## [1] &quot;The error value is 0.643515970950442&quot;
+## [1] &quot;The validate error value is 0.633811267663915&quot;
+## [1] &quot;The iteration is 4590&quot;
+## [1] &quot;The error value is 0.64352833667414&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4600&quot;
+## [1] &quot;The error value is 0.643535756108358&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4610&quot;
+## [1] &quot;The error value is 0.643538229253098&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4620&quot;
+## [1] &quot;The error value is 0.643548121832056&quot;
+## [1] &quot;The validate error value is 0.633811267663915&quot;
+## [1] &quot;The iteration is 4630&quot;
+## [1] &quot;The error value is 0.643544412114947&quot;
+## [1] &quot;The validate error value is 0.633811267663915&quot;
+## [1] &quot;The iteration is 4640&quot;
+## [1] &quot;The error value is 0.643546885259686&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4650&quot;
+## [1] &quot;The error value is 0.643545648687317&quot;
+## [1] &quot;The validate error value is 0.633831957461776&quot;
+## [1] &quot;The iteration is 4660&quot;
+## [1] &quot;The error value is 0.643554304693905&quot;
+## [1] &quot;The validate error value is 0.633873337057497&quot;
+## [1] &quot;The iteration is 4670&quot;
+## [1] &quot;The error value is 0.643548121832056&quot;
+## [1] &quot;The validate error value is 0.633873337057497&quot;
+## [1] &quot;The iteration is 4680&quot;
+## [1] &quot;The error value is 0.643551831549166&quot;
+## [1] &quot;The validate error value is 0.633873337057497&quot;
+## [1] &quot;The iteration is 4690&quot;
+## [1] &quot;The error value is 0.643554304693905&quot;
+## [1] &quot;The validate error value is 0.633873337057497&quot;
+## [1] &quot;The iteration is 4700&quot;
+## [1] &quot;The error value is 0.643559250983384&quot;
+## [1] &quot;The validate error value is 0.633894026855358&quot;
+## [1] &quot;The iteration is 4710&quot;
+## [1] &quot;The error value is 0.643564197272863&quot;
+## [1] &quot;The validate error value is 0.633914716653218&quot;
+## [1] &quot;The iteration is 4720&quot;
+## [1] &quot;The error value is 0.643575326424191&quot;
+## [1] &quot;The validate error value is 0.633914716653218&quot;
+## [1] &quot;The iteration is 4730&quot;
+## [1] &quot;The error value is 0.643574089851822&quot;
+## [1] &quot;The validate error value is 0.633914716653218&quot;
+## [1] &quot;The iteration is 4740&quot;
+## [1] &quot;The error value is 0.643572853279452&quot;
+## [1] &quot;The validate error value is 0.633914716653218&quot;
+## [1] &quot;The iteration is 4750&quot;
+## [1] &quot;The error value is 0.643575326424191&quot;
+## [1] &quot;The validate error value is 0.633935406451079&quot;
+## [1] &quot;The iteration is 4760&quot;
+## [1] &quot;The error value is 0.643577799568931&quot;
+## [1] &quot;The validate error value is 0.633935406451079&quot;
+## [1] &quot;The iteration is 4770&quot;
+## [1] &quot;The error value is 0.643579036141301&quot;
+## [1] &quot;The validate error value is 0.633935406451079&quot;
+## [1] &quot;The iteration is 4780&quot;
+## [1] &quot;The error value is 0.64358027271367&quot;
+## [1] &quot;The validate error value is 0.633935406451079&quot;
+## [1] &quot;The iteration is 4790&quot;
+## [1] &quot;The error value is 0.64358027271367&quot;
+## [1] &quot;The validate error value is 0.633935406451079&quot;
+## [1] &quot;The iteration is 4800&quot;
+## [1] &quot;The error value is 0.64358150928604&quot;
+## [1] &quot;The validate error value is 0.633935406451079&quot;
+## [1] &quot;The iteration is 4810&quot;
+## [1] &quot;The error value is 0.64358274585841&quot;
+## [1] &quot;The validate error value is 0.6339767860468&quot;
+## [1] &quot;The iteration is 4820&quot;
+## [1] &quot;The error value is 0.643574089851822&quot;
+## [1] &quot;The validate error value is 0.6339767860468&quot;
+## [1] &quot;The iteration is 4830&quot;
+## [1] &quot;The error value is 0.643569143562342&quot;
+## [1] &quot;The validate error value is 0.6339767860468&quot;
+## [1] &quot;The iteration is 4840&quot;
+## [1] &quot;The error value is 0.643570380134712&quot;
+## [1] &quot;The validate error value is 0.6339767860468&quot;
+## [1] &quot;The iteration is 4850&quot;
+## [1] &quot;The error value is 0.643574089851822&quot;
+## [1] &quot;The validate error value is 0.6339767860468&quot;
+## [1] &quot;The iteration is 4860&quot;
+## [1] &quot;The error value is 0.643574089851822&quot;
+## [1] &quot;The validate error value is 0.6339767860468&quot;
+## [1] &quot;The iteration is 4870&quot;
+## [1] &quot;The error value is 0.64358027271367&quot;
+## [1] &quot;The validate error value is 0.633997475844661&quot;
+## [1] &quot;The iteration is 4880&quot;
+## [1] &quot;The error value is 0.64358027271367&quot;
+## [1] &quot;The validate error value is 0.633997475844661&quot;
+## [1] &quot;The iteration is 4890&quot;
+## [1] &quot;The error value is 0.643576562996561&quot;
+## [1] &quot;The validate error value is 0.633997475844661&quot;
+## [1] &quot;The iteration is 4900&quot;
+## [1] &quot;The error value is 0.643577799568931&quot;
+## [1] &quot;The validate error value is 0.633997475844661&quot;
+## [1] &quot;The iteration is 4910&quot;
+## [1] &quot;The error value is 0.643576562996561&quot;
+## [1] &quot;The validate error value is 0.633997475844661&quot;
+## [1] &quot;The iteration is 4920&quot;
+## [1] &quot;The error value is 0.64358274585841&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4930&quot;
+## [1] &quot;The error value is 0.643576562996561&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4940&quot;
+## [1] &quot;The error value is 0.643567906989973&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4950&quot;
+## [1] &quot;The error value is 0.643572853279452&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4960&quot;
+## [1] &quot;The error value is 0.643569143562342&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4970&quot;
+## [1] &quot;The error value is 0.643571616707082&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4980&quot;
+## [1] &quot;The error value is 0.643569143562342&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 4990&quot;
+## [1] &quot;The error value is 0.643571616707082&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+## [1] &quot;The iteration is 5000&quot;
+## [1] &quot;The error value is 0.643562960700494&quot;
+## [1] &quot;The validate error value is 0.634018165642522&quot;
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">####C-index in training data</span>
+<span class="hl kwd">ggplot</span><span class="hl std">(</span><span class="hl kwa">NULL</span><span class="hl std">,</span><span class="hl kwd">aes</span><span class="hl std">(</span><span class="hl kwc">y</span><span class="hl std">=SCGP_res</span><span class="hl opt">$</span><span class="hl std">cost,</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">length</span><span class="hl std">(SCGP_res</span><span class="hl opt">$</span><span class="hl std">cost)))</span><span class="hl opt">+</span><span class="hl kwd">geom_point</span><span class="hl std">()</span><span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl str">&quot;&quot;</span><span class="hl std">,</span><span class="hl kwc">y</span><span class="hl std">=</span><span class="hl str">&quot;C-index in training data&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-13-1.png" title="plot of chunk unnamed-chunk-13" alt="plot of chunk unnamed-chunk-13" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">####C-index in testing data</span>
+<span class="hl kwd">ggplot</span><span class="hl std">(</span><span class="hl kwa">NULL</span><span class="hl std">,</span><span class="hl kwd">aes</span><span class="hl std">(</span><span class="hl kwc">y</span><span class="hl std">=SCGP_res</span><span class="hl opt">$</span><span class="hl std">validate_cost,</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">length</span><span class="hl std">(SCGP_res</span><span class="hl opt">$</span><span class="hl std">validate_cost)))</span><span class="hl opt">+</span><span class="hl kwd">geom_point</span><span class="hl std">()</span><span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl str">&quot;&quot;</span><span class="hl std">,</span><span class="hl kwc">y</span><span class="hl std">=</span><span class="hl str">&quot;C-index in testing data&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-13-2.png" title="plot of chunk unnamed-chunk-13" alt="plot of chunk unnamed-chunk-13" class="plot" /></div></div>
+<p>Get output value</p>
+<div class="chunk" id="unnamed-chunk-14"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(survival)</span>
+<span class="hl std">output</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_get_output</span><span class="hl std">(data,SCGP_res)</span>
+<span class="hl kwd">summary</span><span class="hl std">(</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(clin</span><span class="hl opt">$</span><span class="hl std">time,clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl std">output))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(clin$time, clin$status) ~ output)
+## 
+##   n= 1523, number of events= 887 
+## 
+##            coef exp(coef) se(coef)      z Pr(&gt;|z|)    
+## output -2.34943   0.09542  0.17239 -13.63   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##        exp(coef) exp(-coef) lower .95 upper .95
+## output   0.09542      10.48   0.06806    0.1338
+## 
+## Concordance= 0.644  (se = 0.01 )
+## Likelihood ratio test= 190.3  on 1 df,   p=&lt;2e-16
+## Wald test            = 185.7  on 1 df,   p=&lt;2e-16
+## Score (logrank) test = 186.2  on 1 df,   p=&lt;2e-16
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">validate_output</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_get_output</span><span class="hl std">(validate_data,SCGP_res)</span>
+<span class="hl kwd">summary</span><span class="hl std">(</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(validate_clin</span><span class="hl opt">$</span><span class="hl std">time,validate_clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl std">validate_output))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(validate_clin$time, validate_clin$status) ~ 
+##     validate_output)
+## 
+##   n= 381, number of events= 216 
+## 
+##                     coef exp(coef) se(coef)      z Pr(&gt;|z|)    
+## validate_output -0.23629   0.78955  0.03465 -6.819 9.18e-12 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##                 exp(coef) exp(-coef) lower .95 upper .95
+## validate_output    0.7896      1.267    0.7377     0.845
+## 
+## Concordance= 0.634  (se = 0.021 )
+## Likelihood ratio test= 43.75  on 1 df,   p=4e-11
+## Wald test            = 46.5  on 1 df,   p=9e-12
+## Score (logrank) test = 47.31  on 1 df,   p=6e-12
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###CPH model</span>
+<span class="hl std">CPH</span><span class="hl kwb">=</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(clin</span><span class="hl opt">$</span><span class="hl std">time,clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl std">.,</span><span class="hl kwd">as.data.frame</span><span class="hl std">(data))</span>
+<span class="hl kwd">summary</span><span class="hl std">(CPH)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(clin$time, clin$status) ~ ., data = as.data.frame(data))
+## 
+##   n= 1523, number of events= 887 
+## 
+##          coef exp(coef)  se(coef)      z Pr(&gt;|z|)    
+## `1`    0.4642    1.5908    0.5183  0.896  0.37039    
+## `2`   -0.9152    0.4005    0.4995 -1.832  0.06693 .  
+## `3`    1.7848    5.9583    0.4531  3.939 8.19e-05 ***
+## `4`    1.3731    3.9476    0.4547  3.020  0.00253 ** 
+## `5`    1.1610    3.1930    0.4858  2.390  0.01686 *  
+## `6`   -1.3343    0.2633    0.4466 -2.988  0.00281 ** 
+## `7`    4.0441   57.0575    0.5934  6.815 9.41e-12 ***
+## `8`    0.3821    1.4654    0.6387  0.598  0.54968    
+## `9`    7.2584 1420.0219    0.5677 12.785  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##     exp(coef) exp(-coef) lower .95 upper .95
+## `1`    1.5908  0.6286248    0.5761    4.3929
+## `2`    0.4005  2.4971753    0.1504    1.0659
+## `3`    5.9583  0.1678338    2.4514   14.4817
+## `4`    3.9476  0.2533178    1.6192    9.6244
+## `5`    3.1930  0.3131884    1.2322    8.2737
+## `6`    0.2633  3.7974294    0.1097    0.6319
+## `7`   57.0575  0.0175262   17.8327  182.5608
+## `8`    1.4654  0.6824236    0.4191    5.1241
+## `9` 1420.0219  0.0007042  466.7198 4320.4985
+## 
+## Concordance= 0.641  (se = 0.01 )
+## Likelihood ratio test= 248.8  on 9 df,   p=&lt;2e-16
+## Wald test            = 231.4  on 9 df,   p=&lt;2e-16
+## Score (logrank) test = 235.1  on 9 df,   p=&lt;2e-16
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">summary</span><span class="hl std">(</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(validate_clin</span><span class="hl opt">$</span><span class="hl std">time,validate_clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl kwd">predict</span><span class="hl std">(CPH,</span><span class="hl kwd">as.data.frame</span><span class="hl std">(validate_data))))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(validate_clin$time, validate_clin$status) ~ 
+##     predict(CPH, as.data.frame(validate_data)))
+## 
+##   n= 381, number of events= 216 
+## 
+##                                               coef exp(coef) se(coef)     z
+## predict(CPH, as.data.frame(validate_data)) 0.08248   1.08597  0.01093 7.548
+##                                            Pr(&gt;|z|)    
+## predict(CPH, as.data.frame(validate_data)) 4.41e-14 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##                                            exp(coef) exp(-coef) lower .95
+## predict(CPH, as.data.frame(validate_data))     1.086     0.9208     1.063
+##                                            upper .95
+## predict(CPH, as.data.frame(validate_data))     1.109
+## 
+## Concordance= 0.632  (se = 0.021 )
+## Likelihood ratio test= 62.8  on 1 df,   p=2e-15
+## Wald test            = 56.98  on 1 df,   p=4e-14
+## Score (logrank) test = 58.07  on 1 df,   p=3e-14
+</pre></div>
+</div></div>
+<h2>Calculation of importance score</h2>
+<div class="chunk" id="unnamed-chunk-15"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">weight</span><span class="hl kwb">=</span><span class="hl std">SCGP_res</span><span class="hl opt">$</span><span class="hl std">weight</span>
+<span class="hl std">bias</span><span class="hl kwb">=</span><span class="hl std">SCGP_res</span><span class="hl opt">$</span><span class="hl std">bias</span>
+<span class="hl std">imp_perturbation</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_perturbation</span><span class="hl std">(data, weight, bias)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">imp_occlusion</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_occlusion</span><span class="hl std">(data, weight, bias)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###visualization</span>
+<span class="hl kwd">plot</span><span class="hl std">(imp_perturbation)</span>
+<span class="hl kwd">text</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=imp_perturbation</span><span class="hl opt">$</span><span class="hl std">ID,</span><span class="hl kwc">y</span><span class="hl std">=imp_perturbation</span><span class="hl opt">$</span><span class="hl std">Influence,imp_perturbation</span><span class="hl opt">$</span><span class="hl std">ID)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-15-1.png" title="plot of chunk unnamed-chunk-15" alt="plot of chunk unnamed-chunk-15" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(imp_occlusion)</span>
+<span class="hl kwd">text</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=imp_occlusion</span><span class="hl opt">$</span><span class="hl std">ID,</span><span class="hl kwc">y</span><span class="hl std">=imp_occlusion</span><span class="hl opt">$</span><span class="hl std">Influence,imp_occlusion</span><span class="hl opt">$</span><span class="hl std">ID)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-15-2.png" title="plot of chunk unnamed-chunk-15" alt="plot of chunk unnamed-chunk-15" class="plot" /></div></div>
+
+</body>
+</html>
