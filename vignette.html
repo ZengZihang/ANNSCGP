@@ -1,0 +1,1424 @@
+<html>
+
+<head>
+<style type="text/css">
+.inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.left {
+  text-align: left;
+}
+.right {
+  text-align: right;
+}
+.center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+<title>Supervised Artificial Neural Network with Selective Connection based on Gene Patterns</title>
+</head>
+
+<body>
+
+<h1>Supervised Artificial Neural Network with Selective Connection based on Gene Patterns</h1>
+
+<h2><strong>Zihang Zeng</strong></h2>
+
+<strong>ANN-SCGP proposes a supervised Artificial Neural Network with Selective Connection based on Gene Patterns (ANN-SCGP) model using Omics-data</strong>
+
+<h2>Data preparation</h2>
+
+<p>Loading example</p>
+<div class="chunk" id="unnamed-chunk-1"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">##Loading example</span>
+<span class="hl com">#data=read.csv(&quot;data.csv&quot;)</span>
+<span class="hl com">#clin=read.csv(&quot;clin.csv&quot;)</span>
+<span class="hl com">#validate_data=read.csv(&quot;validate_data.csv&quot;)</span>
+<span class="hl com">#validate_clin=read.csv(&quot;validate_clin.csv&quot;)</span>
+<span class="hl kwd">library</span><span class="hl std">(ANNSCGP)</span>
+<span class="hl kwd">library</span><span class="hl std">(ggplot2)</span>
+<span class="hl std">metabric</span> <span class="hl kwb">&lt;-</span> <span class="hl std">hdf5r</span><span class="hl opt">::</span><span class="hl std">H5File</span><span class="hl opt">$</span><span class="hl kwd">new</span><span class="hl std">(</span><span class="hl str">&quot;data/metabric_IHC4_clinical_train_test.h5&quot;</span><span class="hl std">,</span> <span class="hl kwc">mode</span> <span class="hl std">=</span> <span class="hl str">&quot;r&quot;</span><span class="hl std">)</span>
+<span class="hl std">metabric</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Class: H5File
+## Filename: D:\tools\ANNSCGP\data\metabric_IHC4_clinical_train_test.h5
+## Access type: H5F_ACC_RDONLY
+## Listing:
+##   name  obj_type dataset.dims dataset.type_class
+##   test H5I_GROUP         &lt;NA&gt;               &lt;NA&gt;
+##  train H5I_GROUP         &lt;NA&gt;               &lt;NA&gt;
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###training data</span>
+<span class="hl std">data</span><span class="hl kwb">=</span><span class="hl kwd">t</span><span class="hl std">(metabric[[</span><span class="hl str">&quot;train&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;x&quot;</span><span class="hl std">]][,])</span>
+<span class="hl kwd">rownames</span><span class="hl std">(data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(data)</span>
+<span class="hl kwd">colnames</span><span class="hl std">(data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">ncol</span><span class="hl std">(data)</span>
+<span class="hl std">clin</span><span class="hl kwb">=</span><span class="hl kwd">data.frame</span><span class="hl std">(</span><span class="hl kwc">time</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;train&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;t&quot;</span><span class="hl std">]][]</span><span class="hl opt">/</span><span class="hl num">100</span><span class="hl std">,</span><span class="hl kwc">status</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;train&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;e&quot;</span><span class="hl std">]][])</span>
+<span class="hl kwd">rownames</span><span class="hl std">(clin)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(clin)</span>
+<span class="hl std">data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##          1        2         3        4 5
+## 1 5.603834 7.811392 10.797988 5.967607 1
+## 2 5.284882 9.581043 10.204620 5.664970 1
+## 3 5.920251 6.776564 12.431715 5.873857 0
+## 4 6.654017 5.341846  8.646379 5.655888 0
+## 5 5.456747 5.339741 10.555724 6.008429 1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">clin[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##        time status
+## 1 0.9933334      0
+## 2 0.9573333      1
+## 3 1.4023334      0
+## 4 2.3930000      0
+## 5 0.5693333      1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###testing data</span>
+<span class="hl std">validate_data</span><span class="hl kwb">=</span><span class="hl kwd">t</span><span class="hl std">(metabric[[</span><span class="hl str">&quot;test&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;x&quot;</span><span class="hl std">]][,])</span>
+<span class="hl kwd">colnames</span><span class="hl std">(validate_data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">ncol</span><span class="hl std">(validate_data)</span>
+<span class="hl kwd">rownames</span><span class="hl std">(validate_data)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(validate_data)</span>
+<span class="hl std">validate_clin</span><span class="hl kwb">=</span><span class="hl kwd">data.frame</span><span class="hl std">(</span><span class="hl kwc">time</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;test&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;t&quot;</span><span class="hl std">]][]</span><span class="hl opt">/</span><span class="hl num">100</span><span class="hl std">,</span><span class="hl kwc">status</span><span class="hl std">=metabric[[</span><span class="hl str">&quot;test&quot;</span><span class="hl std">]][[</span><span class="hl str">&quot;e&quot;</span><span class="hl std">]][])</span>
+<span class="hl kwd">rownames</span><span class="hl std">(validate_clin)</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">nrow</span><span class="hl std">(validate_clin)</span>
+<span class="hl std">validate_data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##          1        2         3        4 5
+## 1 8.003323 5.383952 13.391568 6.177617 0
+## 2 5.877926 8.036838 10.164740 5.866741 0
+## 3 5.892256 6.425127 11.480591 5.551163 1
+## 4 5.556709 7.545435 11.240383 6.057502 0
+## 5 5.501077 7.791979  9.923388 5.588843 1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">validate_clin[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##        time status
+## 1 1.0210000      0
+## 2 1.7110001      0
+## 3 1.7483333      0
+## 4 1.0726667      1
+## 5 0.4683333      1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###standardization</span>
+<span class="hl std">normalize_minmax</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+     <span class="hl kwd">return</span><span class="hl std">((x</span><span class="hl opt">-</span><span class="hl kwd">min</span><span class="hl std">(x)</span><span class="hl opt">+</span><span class="hl num">0.001</span><span class="hl std">)</span><span class="hl opt">/</span><span class="hl std">(</span><span class="hl kwd">max</span><span class="hl std">(x)</span><span class="hl opt">-</span><span class="hl kwd">min</span><span class="hl std">(x)</span><span class="hl opt">+</span><span class="hl num">0.001</span><span class="hl std">))}</span>
+<span class="hl std">data</span><span class="hl kwb">=</span><span class="hl kwd">normalize_minmax</span><span class="hl std">(</span><span class="hl kwd">scale</span><span class="hl std">(data))</span>
+<span class="hl std">validate_data</span><span class="hl kwb">=</span><span class="hl kwd">normalize_minmax</span><span class="hl std">(</span><span class="hl kwd">scale</span><span class="hl std">(validate_data))</span>
+<span class="hl std">data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##           1         2         3         4         5
+## 1 0.1965050 0.3709469 0.2537325 0.2746444 0.3145287
+## 2 0.1675138 0.5060012 0.2197192 0.2053290 0.3145287
+## 3 0.2252658 0.2919720 0.3473820 0.2531721 0.1552515
+## 4 0.2919616 0.1824787 0.1303967 0.2032488 0.1552515
+## 5 0.1831355 0.1823182 0.2398453 0.2839941 0.3145287
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">validate_data[</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">]</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##           1         2         3         4         5
+## 1 0.4581029 0.1939577 0.4498491 0.3452831 0.1368032
+## 2 0.2330192 0.4379694 0.2256232 0.2606435 0.1368032
+## 3 0.2345368 0.2897247 0.3170591 0.1747237 0.3355397
+## 4 0.1990017 0.3927704 0.3003676 0.3125806 0.1368032
+## 5 0.1931101 0.4154474 0.2088522 0.1849827 0.3355397
+</pre></div>
+</div></div>
+
+<h2>Construction of selectively connected matrix (SCM)</h2>
+
+<p>Building SCM from inputs</p>
+
+<div class="chunk" id="unnamed-chunk-2"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(philentropy)</span>
+<span class="hl kwd">library</span><span class="hl std">(NMF)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## 载入需要的程辑包：pkgmaker
+</pre></div>
+<div class="message"><pre class="knitr r">## 载入需要的程辑包：registry
+</pre></div>
+<div class="message"><pre class="knitr r">## 载入需要的程辑包：rngtools
+</pre></div>
+<div class="message"><pre class="knitr r">## 载入需要的程辑包：cluster
+</pre></div>
+<div class="message"><pre class="knitr r">## NMF - BioConductor layer [OK] | Shared memory capabilities [NO: windows] | Cores 15/16
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(reshape2)</span>
+<span class="hl std">n</span><span class="hl kwb">=</span><span class="hl num">5</span> <span class="hl com">##n isthe number of L1 nodes</span>
+<span class="hl std">SCM.r</span> <span class="hl kwb">&lt;-</span> <span class="hl std">NMF</span><span class="hl opt">::</span><span class="hl kwd">nmf</span><span class="hl std">(</span><span class="hl kwd">t</span><span class="hl std">(data)</span><span class="hl opt">+</span><span class="hl num">0.0000000001</span><span class="hl std">,n,</span> <span class="hl kwc">nrun</span><span class="hl std">=</span><span class="hl num">20</span><span class="hl std">,</span> <span class="hl kwc">seed</span><span class="hl std">=</span><span class="hl num">123456</span><span class="hl std">,</span><span class="hl kwc">.options</span><span class="hl std">=</span><span class="hl str">'v1p1'</span><span class="hl std">)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## NMF algorithm: 'brunet'
+</pre></div>
+<div class="message"><pre class="knitr r">## Multiple runs: 20
+</pre></div>
+<div class="message"><pre class="knitr r">## Mode: sequential [foreach:doParallelSNOW]
+</pre></div>
+<div class="output"><pre class="knitr r">## Runs: |                                                        Runs: |                                                  |   0%Runs: |                                                        Runs: |==================================================| 100%
+## System time:
+##    用户    系统    流逝 
+##    2.56    0.49 1012.80
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">dis_data</span><span class="hl kwb">=</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">distance</span><span class="hl std">(</span><span class="hl kwd">t</span><span class="hl std">(data),</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;euclidean&quot;</span><span class="hl std">,</span><span class="hl kwc">test.na</span> <span class="hl std">= F,</span><span class="hl kwc">use.row.names</span><span class="hl std">=T))[,</span><span class="hl num">3</span><span class="hl std">]</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">dis_SCM</span><span class="hl kwb">=</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">distance</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r),</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;euclidean&quot;</span><span class="hl std">,</span><span class="hl kwc">test.na</span> <span class="hl std">= F,</span><span class="hl kwc">use.row.names</span><span class="hl std">=T))[,</span><span class="hl num">3</span><span class="hl std">]</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(dis_data,dis_SCM)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-1.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">##calculate max PCIW</span>
+<span class="hl std">cor_r</span><span class="hl kwb">=</span><span class="hl num">NA</span>
+<span class="hl std">cor_p</span><span class="hl kwb">=</span><span class="hl num">NA</span>
+<span class="hl com">#Por is sparsity</span>
+<span class="hl kwa">for</span> <span class="hl std">(Por</span> <span class="hl kwa">in</span> <span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0.1</span><span class="hl std">,</span><span class="hl num">0.8</span><span class="hl std">,</span><span class="hl kwc">by</span><span class="hl std">=</span><span class="hl num">0.1</span><span class="hl std">)){</span>
+<span class="hl std">weight_selective</span><span class="hl kwb">=</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r)</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&gt;</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&lt;=</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+<span class="hl std">a2</span><span class="hl kwb">=</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">distance</span><span class="hl std">(weight_selective,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;euclidean&quot;</span><span class="hl std">,</span><span class="hl kwc">test.na</span> <span class="hl std">= F,</span><span class="hl kwc">use.row.names</span><span class="hl std">=T))[,</span><span class="hl num">3</span><span class="hl std">]</span>
+<span class="hl std">COR</span><span class="hl kwb">=</span><span class="hl kwd">cor.test</span><span class="hl std">(dis_data,a2)</span>
+<span class="hl std">cor_r</span><span class="hl kwb">=</span><span class="hl kwd">c</span><span class="hl std">(cor_r,COR</span><span class="hl opt">$</span><span class="hl std">estimate)</span>
+<span class="hl std">cor_p</span><span class="hl kwb">=</span><span class="hl kwd">c</span><span class="hl std">(cor_p,COR</span><span class="hl opt">$</span><span class="hl std">p.value)</span>
+<span class="hl std">}</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0.1</span><span class="hl std">,</span><span class="hl num">0.8</span><span class="hl std">,</span><span class="hl kwc">by</span><span class="hl std">=</span><span class="hl num">0.1</span><span class="hl std">),cor_r[</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">])</span> <span class="hl com">##We choose sparsity at maximum PCIW</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-2.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0.1</span><span class="hl std">,</span><span class="hl num">0.8</span><span class="hl std">,</span><span class="hl kwc">by</span><span class="hl std">=</span><span class="hl num">0.1</span><span class="hl std">),cor_p[</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">])</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-3.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">Por</span><span class="hl kwb">=</span><span class="hl num">0.5</span> <span class="hl com">##We choose sparsity at maximum PCIW</span>
+<span class="hl std">weight_selective</span><span class="hl kwb">=</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r)</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&gt;</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&lt;=</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+<span class="hl std">pheatmap</span><span class="hl opt">::</span><span class="hl kwd">pheatmap</span><span class="hl std">(weight_selective)</span> <span class="hl com">##weight_selective is SCM</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-4.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">pheatmap</span><span class="hl opt">::</span><span class="hl kwd">pheatmap</span><span class="hl std">(</span><span class="hl kwd">t</span><span class="hl std">(data))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-2-5.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div></div>
+
+<h2>Activation function</h2>
+<p>sigmoid function</p>
+<div class="chunk" id="unnamed-chunk-3"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">sigmoid</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl kwd">return</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">/</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">+</span><span class="hl kwd">exp</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x)))</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">sigmoid</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;sigmoid function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-3-1.png" title="plot of chunk unnamed-chunk-3" alt="plot of chunk unnamed-chunk-3" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_sigmoid</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">sigmoid</span><span class="hl std">(x)</span><span class="hl opt">*</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">-</span><span class="hl kwd">sigmoid</span><span class="hl std">(x))</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_sigmoid</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of sigmoid function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-3-2.png" title="plot of chunk unnamed-chunk-3" alt="plot of chunk unnamed-chunk-3" class="plot" /></div></div>
+<p>tanh function</p>
+<div class="chunk" id="unnamed-chunk-4"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">tanh</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl kwd">return</span><span class="hl std">((</span><span class="hl kwd">exp</span><span class="hl std">(x)</span><span class="hl opt">-</span><span class="hl kwd">exp</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x))</span><span class="hl opt">/</span><span class="hl std">(</span><span class="hl kwd">exp</span><span class="hl std">(x)</span><span class="hl opt">+</span><span class="hl kwd">exp</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x)))</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">tanh</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;tanh function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-4-1.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_tanh</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x</span><span class="hl kwb">=</span><span class="hl num">1</span><span class="hl opt">-</span><span class="hl std">(</span><span class="hl kwd">tanh</span><span class="hl std">(x)</span><span class="hl opt">^</span><span class="hl num">2</span><span class="hl std">)</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_tanh</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of tanh function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-4-2.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" class="plot" /></div></div>
+<p>ReLU function</p>
+<div class="chunk" id="unnamed-chunk-5"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">ReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">ReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;ReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-5-1.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_ReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+  <span class="hl std">x[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_ReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of ReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-5-2.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" class="plot" /></div></div>
+<p>LReLU function</p>
+<div class="chunk" id="unnamed-chunk-6"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">0.01</span>
+<span class="hl std">LReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span><span class="hl opt">*</span><span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">LReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;LReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_LReLU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span>
+  <span class="hl std">x[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_ReLU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of LReLU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-6-2.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" class="plot" /></div></div>
+<p>ELU function</p>
+<div class="chunk" id="unnamed-chunk-7"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">1.67326324235</span>
+<span class="hl std">ELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span><span class="hl opt">*</span><span class="hl std">(</span><span class="hl kwd">exp</span><span class="hl std">(x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">])</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">)</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">ELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;ELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-7-1.png" title="plot of chunk unnamed-chunk-7" alt="plot of chunk unnamed-chunk-7" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_ELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x1</span><span class="hl kwb">=</span><span class="hl std">x</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl kwd">ELU</span><span class="hl std">(x)[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl opt">+</span><span class="hl std">alpha</span>
+  <span class="hl kwd">return</span><span class="hl std">(x1)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_ELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of ELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-7-2.png" title="plot of chunk unnamed-chunk-7" alt="plot of chunk unnamed-chunk-7" class="plot" /></div></div>
+<p>SELU function</p>
+<div class="chunk" id="unnamed-chunk-8"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">1.67326324235</span>
+<span class="hl std">lambda</span><span class="hl kwb">=</span><span class="hl num">1.05070098736</span>
+<span class="hl std">SELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x</span><span class="hl kwb">=</span><span class="hl std">x</span><span class="hl opt">*</span><span class="hl std">lambda</span>
+  <span class="hl std">x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">alpha</span><span class="hl opt">*</span><span class="hl std">(</span><span class="hl kwd">exp</span><span class="hl std">(x[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">])</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">)</span>
+  <span class="hl kwd">return</span><span class="hl std">(x)</span>
+<span class="hl std">}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">SELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;SELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-8-1.png" title="plot of chunk unnamed-chunk-8" alt="plot of chunk unnamed-chunk-8" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_SELU</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span>
+  <span class="hl std">x1</span><span class="hl kwb">=</span><span class="hl std">x</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&gt;</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">lambda</span>
+  <span class="hl std">x1[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl kwb">=</span><span class="hl std">(</span><span class="hl kwd">SELU</span><span class="hl std">(x)[x</span><span class="hl opt">&lt;=</span><span class="hl num">0</span><span class="hl std">]</span><span class="hl opt">+</span><span class="hl std">alpha)</span><span class="hl opt">*</span><span class="hl std">lambda</span>
+  <span class="hl kwd">return</span><span class="hl std">(x1)</span>
+<span class="hl std">}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_SELU</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of SELU function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-8-2.png" title="plot of chunk unnamed-chunk-8" alt="plot of chunk unnamed-chunk-8" class="plot" /></div></div>
+<p>identity function</p>
+<div class="chunk" id="unnamed-chunk-9"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">alpha</span><span class="hl kwb">=</span><span class="hl num">1</span>
+<span class="hl std">identity</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(alpha</span><span class="hl opt">*</span><span class="hl std">x)}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">identity</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;identity function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-9-1.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_identity</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(</span><span class="hl kwd">rep</span><span class="hl std">(alpha,</span><span class="hl kwd">length</span><span class="hl std">(x)))}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_identity</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of identity function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-9-2.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" class="plot" /></div></div>
+<p>origin function</p>
+<div class="chunk" id="unnamed-chunk-10"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">origin</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(x)}</span>
+<span class="hl std">x</span><span class="hl kwb">=</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">10</span><span class="hl std">,</span><span class="hl num">0.1</span><span class="hl std">)</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">origin</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;origin function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-10-1.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">dev_origin</span><span class="hl kwb">&lt;-</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">){</span><span class="hl kwd">return</span><span class="hl std">(</span><span class="hl kwd">rep</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span><span class="hl kwd">length</span><span class="hl std">(x)))}</span>
+<span class="hl std">y</span><span class="hl kwb">=</span><span class="hl kwd">dev_origin</span><span class="hl std">(x)</span>
+<span class="hl kwd">plot</span><span class="hl std">(x,y,</span><span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">,</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span><span class="hl kwc">main</span><span class="hl std">=</span><span class="hl str">&quot;derivatives of origin function&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-10-2.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" class="plot" /></div></div>
+<h2>Parameter setting</h2>
+<div class="chunk" id="unnamed-chunk-11"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">parameters</span><span class="hl kwb">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwc">alpha</span><span class="hl std">=</span><span class="hl num">1.67326324235</span><span class="hl std">,</span>  <span class="hl com">#alpha value of activation function</span>
+              <span class="hl kwc">lambda</span><span class="hl std">=</span><span class="hl num">1.05070098736</span><span class="hl std">,</span>   <span class="hl com">#lambda value of activation function</span>
+              <span class="hl kwc">learning_rate</span><span class="hl std">=</span><span class="hl num">0.0005</span><span class="hl std">,</span> <span class="hl com">#learning rate</span>
+              <span class="hl kwc">acf</span><span class="hl std">=SELU,</span> <span class="hl com">#activation function</span>
+              <span class="hl kwc">outf</span><span class="hl std">=exp,</span> <span class="hl com">#activation function in output layer</span>
+              <span class="hl kwc">derivatives_outf</span><span class="hl std">=exp,</span> <span class="hl com">#derivatives of activation function in output layer</span>
+              <span class="hl kwc">derivatives_acf</span><span class="hl std">=dev_SELU,</span> <span class="hl com">#derivatives of activation function</span>
+              <span class="hl kwc">training_n</span><span class="hl std">=</span><span class="hl num">2000</span><span class="hl std">,</span> <span class="hl com">#iterations</span>
+              <span class="hl kwc">message_n</span><span class="hl std">=</span><span class="hl num">10</span><span class="hl std">,</span> <span class="hl com">#message after n iterations</span>
+              <span class="hl kwc">termination_threshold</span><span class="hl std">=</span><span class="hl num">0.95</span><span class="hl std">,</span> <span class="hl com">#termination threshold</span>
+              <span class="hl kwc">greater_than_termination_threshold</span><span class="hl std">=T,</span> <span class="hl com">#T: Terminate when error value is greater than termination threshold</span>
+              <span class="hl kwc">L2_w</span><span class="hl std">=</span><span class="hl num">0</span><span class="hl std">)</span> <span class="hl com">#coefficient of L2-norm</span>
+</pre></div>
+</div></div>
+<h2>Training</h2>
+<div class="chunk" id="unnamed-chunk-12"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">##option setting: A list containing the number of nodes per cluster in each layer (Start with the second layer)</span>
+<span class="hl std">option</span><span class="hl kwb">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">),</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">))</span> <span class="hl com">#there are three layers and only one node in the 2nd and 3rd layer</span>
+<span class="hl com">###more example</span>
+<span class="hl com"># option=list(c(20,30,20),c(20),c(1)) #there are four layers. The 2nd layer had three clusters whose node numbers are 20 (cluster1), 30 (cluster2), 20 (cluster3) respectively.</span>
+
+<span class="hl std">SCGP_res</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_train</span><span class="hl std">(data,clin,option,</span><span class="hl kwc">SCM</span><span class="hl std">=weight_selective,</span><span class="hl kwc">parameters</span><span class="hl std">=parameters,validate_data,validate_clin,</span><span class="hl kwc">survival_analyis</span><span class="hl std">=T)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## 载入需要的程辑包：survival
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;The iteration is 10&quot;
+## [1] &quot;The error value is 0.487763498114845&quot;
+## [1] &quot;The validate error value is 0.539817515982869&quot;
+## [1] &quot;The iteration is 20&quot;
+## [1] &quot;The error value is 0.517171662212945&quot;
+## [1] &quot;The validate error value is 0.483872302567604&quot;
+## [1] &quot;The iteration is 30&quot;
+## [1] &quot;The error value is 0.539403996849214&quot;
+## [1] &quot;The validate error value is 0.511679390892351&quot;
+## [1] &quot;The iteration is 40&quot;
+## [1] &quot;The error value is 0.556207778782149&quot;
+## [1] &quot;The validate error value is 0.532224360168001&quot;
+## [1] &quot;The iteration is 50&quot;
+## [1] &quot;The error value is 0.567747472136933&quot;
+## [1] &quot;The validate error value is 0.545838247160325&quot;
+## [1] &quot;The iteration is 60&quot;
+## [1] &quot;The error value is 0.574905989585587&quot;
+## [1] &quot;The validate error value is 0.55763143194091&quot;
+## [1] &quot;The iteration is 70&quot;
+## [1] &quot;The error value is 0.578151992056259&quot;
+## [1] &quot;The validate error value is 0.570893592369603&quot;
+## [1] &quot;The iteration is 80&quot;
+## [1] &quot;The error value is 0.577375424608037&quot;
+## [1] &quot;The validate error value is 0.570459106614528&quot;
+## [1] &quot;The iteration is 90&quot;
+## [1] &quot;The error value is 0.579074475044115&quot;
+## [1] &quot;The validate error value is 0.571514286305423&quot;
+## [1] &quot;The iteration is 100&quot;
+## [1] &quot;The error value is 0.580888526710581&quot;
+## [1] &quot;The validate error value is 0.573914302857261&quot;
+## [1] &quot;The iteration is 110&quot;
+## [1] &quot;The error value is 0.582144884238278&quot;
+## [1] &quot;The validate error value is 0.576231560217657&quot;
+## [1] &quot;The iteration is 120&quot;
+## [1] &quot;The error value is 0.583289950252694&quot;
+## [1] &quot;The validate error value is 0.577017772536362&quot;
+## [1] &quot;The iteration is 130&quot;
+## [1] &quot;The error value is 0.585040936728302&quot;
+## [1] &quot;The validate error value is 0.578300540003724&quot;
+## [1] &quot;The iteration is 140&quot;
+## [1] &quot;The error value is 0.586994721072553&quot;
+## [1] &quot;The validate error value is 0.579624687066807&quot;
+## [1] &quot;The iteration is 150&quot;
+## [1] &quot;The error value is 0.589056087212976&quot;
+## [1] &quot;The validate error value is 0.580886764736309&quot;
+## [1] &quot;The iteration is 160&quot;
+## [1] &quot;The error value is 0.591562619406519&quot;
+## [1] &quot;The validate error value is 0.582128152607949&quot;
+## [1] &quot;The iteration is 170&quot;
+## [1] &quot;The error value is 0.594291734626623&quot;
+## [1] &quot;The validate error value is 0.584052303808992&quot;
+## [1] &quot;The iteration is 180&quot;
+## [1] &quot;The error value is 0.597349778097088&quot;
+## [1] &quot;The validate error value is 0.586162663190781&quot;
+## [1] &quot;The iteration is 190&quot;
+## [1] &quot;The error value is 0.600606909719088&quot;
+## [1] &quot;The validate error value is 0.589328202263464&quot;
+## [1] &quot;The iteration is 200&quot;
+## [1] &quot;The error value is 0.603745330393589&quot;
+## [1] &quot;The validate error value is 0.59228684335754&quot;
+## [1] &quot;The iteration is 210&quot;
+## [1] &quot;The error value is 0.606607995429629&quot;
+## [1] &quot;The validate error value is 0.595783419195994&quot;
+## [1] &quot;The iteration is 220&quot;
+## [1] &quot;The error value is 0.609511467353871&quot;
+## [1] &quot;The validate error value is 0.598121366354251&quot;
+## [1] &quot;The iteration is 230&quot;
+## [1] &quot;The error value is 0.61198832181054&quot;
+## [1] &quot;The validate error value is 0.600686901288974&quot;
+## [1] &quot;The iteration is 240&quot;
+## [1] &quot;The error value is 0.614435498530334&quot;
+## [1] &quot;The validate error value is 0.602838640266485&quot;
+## [1] &quot;The iteration is 250&quot;
+## [1] &quot;The error value is 0.616877728960649&quot;
+## [1] &quot;The validate error value is 0.604742101669667&quot;
+## [1] &quot;The iteration is 260&quot;
+## [1] &quot;The error value is 0.619099849509143&quot;
+## [1] &quot;The validate error value is 0.606211077317775&quot;
+## [1] &quot;The iteration is 270&quot;
+## [1] &quot;The error value is 0.620926266899307&quot;
+## [1] &quot;The validate error value is 0.607659363168022&quot;
+## [1] &quot;The iteration is 280&quot;
+## [1] &quot;The error value is 0.622590693309031&quot;
+## [1] &quot;The validate error value is 0.609355926592597&quot;
+## [1] &quot;The iteration is 290&quot;
+## [1] &quot;The error value is 0.624204420251593&quot;
+## [1] &quot;The validate error value is 0.610866281836426&quot;
+## [1] &quot;The iteration is 300&quot;
+## [1] &quot;The error value is 0.625475616647726&quot;
+## [1] &quot;The validate error value is 0.611404216580804&quot;
+## [1] &quot;The iteration is 310&quot;
+## [1] &quot;The error value is 0.626874179997947&quot;
+## [1] &quot;The validate error value is 0.612480086069559&quot;
+## [1] &quot;The iteration is 320&quot;
+## [1] &quot;The error value is 0.628063762617675&quot;
+## [1] &quot;The validate error value is 0.613059400409658&quot;
+## [1] &quot;The iteration is 330&quot;
+## [1] &quot;The error value is 0.62904807422402&quot;
+## [1] &quot;The validate error value is 0.614197339291995&quot;
+## [1] &quot;The iteration is 340&quot;
+## [1] &quot;The error value is 0.630109053317291&quot;
+## [1] &quot;The validate error value is 0.614900792419258&quot;
+## [1] &quot;The iteration is 350&quot;
+## [1] &quot;The error value is 0.630910352212908&quot;
+## [1] &quot;The validate error value is 0.615790453727267&quot;
+## [1] &quot;The iteration is 360&quot;
+## [1] &quot;The error value is 0.63168320994402&quot;
+## [1] &quot;The validate error value is 0.616680115035276&quot;
+## [1] &quot;The iteration is 370&quot;
+## [1] &quot;The error value is 0.632512950004143&quot;
+## [1] &quot;The validate error value is 0.617259429375375&quot;
+## [1] &quot;The iteration is 380&quot;
+## [1] &quot;The error value is 0.633137419050881&quot;
+## [1] &quot;The validate error value is 0.616969772205326&quot;
+## [1] &quot;The iteration is 390&quot;
+## [1] &quot;The error value is 0.633880599045119&quot;
+## [1] &quot;The validate error value is 0.6174042579604&quot;
+## [1] &quot;The iteration is 400&quot;
+## [1] &quot;The error value is 0.634416034881233&quot;
+## [1] &quot;The validate error value is 0.617983572300499&quot;
+## [1] &quot;The iteration is 410&quot;
+## [1] &quot;The error value is 0.634902007822557&quot;
+## [1] &quot;The validate error value is 0.618231849874827&quot;
+## [1] &quot;The iteration is 420&quot;
+## [1] &quot;The error value is 0.635259377237423&quot;
+## [1] &quot;The validate error value is 0.619059441789254&quot;
+## [1] &quot;The iteration is 430&quot;
+## [1] &quot;The error value is 0.635673628981299&quot;
+## [1] &quot;The validate error value is 0.619100821384975&quot;
+## [1] &quot;The iteration is 440&quot;
+## [1] &quot;The error value is 0.636099009876504&quot;
+## [1] &quot;The validate error value is 0.618914613204229&quot;
+## [1] &quot;The iteration is 450&quot;
+## [1] &quot;The error value is 0.636353743784678&quot;
+## [1] &quot;The validate error value is 0.61893530300209&quot;
+## [1] &quot;The iteration is 460&quot;
+## [1] &quot;The error value is 0.636669069738972&quot;
+## [1] &quot;The validate error value is 0.618583576438458&quot;
+## [1] &quot;The iteration is 470&quot;
+## [1] &quot;The error value is 0.637078375193369&quot;
+## [1] &quot;The validate error value is 0.618707715225622&quot;
+## [1] &quot;The iteration is 480&quot;
+## [1] &quot;The error value is 0.63724160274618&quot;
+## [1] &quot;The validate error value is 0.618976682597811&quot;
+## [1] &quot;The iteration is 490&quot;
+## [1] &quot;The error value is 0.637492626937245&quot;
+## [1] &quot;The validate error value is 0.618604266236319&quot;
+## [1] &quot;The iteration is 500&quot;
+## [1] &quot;The error value is 0.637674403075603&quot;
+## [1] &quot;The validate error value is 0.618790474417065&quot;
+## [1] &quot;The iteration is 510&quot;
+## [1] &quot;The error value is 0.637878437516616&quot;
+## [1] &quot;The validate error value is 0.619018062193532&quot;
+## [1] &quot;The iteration is 520&quot;
+## [1] &quot;The error value is 0.638015697049662&quot;
+## [1] &quot;The validate error value is 0.618666335629901&quot;
+## [1] &quot;The iteration is 530&quot;
+## [1] &quot;The error value is 0.638180161174843&quot;
+## [1] &quot;The validate error value is 0.61862495603418&quot;
+## [1] &quot;The iteration is 540&quot;
+## [1] &quot;The error value is 0.638407690490882&quot;
+## [1] &quot;The validate error value is 0.61895599279995&quot;
+## [1] &quot;The iteration is 550&quot;
+## [1] &quot;The error value is 0.638468282537001&quot;
+## [1] &quot;The validate error value is 0.618873233608508&quot;
+## [1] &quot;The iteration is 560&quot;
+## [1] &quot;The error value is 0.63858575691213&quot;
+## [1] &quot;The validate error value is 0.618873233608508&quot;
+## [1] &quot;The iteration is 570&quot;
+## [1] &quot;The error value is 0.638770006195228&quot;
+## [1] &quot;The validate error value is 0.618790474417065&quot;
+## [1] &quot;The iteration is 580&quot;
+## [1] &quot;The error value is 0.638899846294054&quot;
+## [1] &quot;The validate error value is 0.618893923406368&quot;
+## [1] &quot;The iteration is 590&quot;
+## [1] &quot;The error value is 0.63903834239947&quot;
+## [1] &quot;The validate error value is 0.619287029565721&quot;
+## [1] &quot;The iteration is 600&quot;
+## [1] &quot;The error value is 0.639191677373322&quot;
+## [1] &quot;The validate error value is 0.619100821384975&quot;
+## [1] &quot;The iteration is 610&quot;
+## [1] &quot;The error value is 0.639346248919545&quot;
+## [1] &quot;The validate error value is 0.618893923406368&quot;
+## [1] &quot;The iteration is 620&quot;
+## [1] &quot;The error value is 0.639442701564388&quot;
+## [1] &quot;The validate error value is 0.618914613204229&quot;
+## [1] &quot;The iteration is 630&quot;
+## [1] &quot;The error value is 0.639577487952694&quot;
+## [1] &quot;The validate error value is 0.618997372395672&quot;
+## [1] &quot;The iteration is 640&quot;
+## [1] &quot;The error value is 0.639811200130582&quot;
+## [1] &quot;The validate error value is 0.619224960172139&quot;
+## [1] &quot;The iteration is 650&quot;
+## [1] &quot;The error value is 0.639927437933341&quot;
+## [1] &quot;The validate error value is 0.618997372395672&quot;
+## [1] &quot;The iteration is 660&quot;
+## [1] &quot;The error value is 0.640031310012403&quot;
+## [1] &quot;The validate error value is 0.619059441789254&quot;
+## [1] &quot;The iteration is 670&quot;
+## [1] &quot;The error value is 0.640042439163731&quot;
+## [1] &quot;The validate error value is 0.618852543810647&quot;
+## [1] &quot;The iteration is 680&quot;
+## [1] &quot;The error value is 0.640131472374355&quot;
+## [1] &quot;The validate error value is 0.618873233608508&quot;
+## [1] &quot;The iteration is 690&quot;
+## [1] &quot;The error value is 0.640247710177114&quot;
+## [1] &quot;The validate error value is 0.618314609066269&quot;
+## [1] &quot;The iteration is 700&quot;
+## [1] &quot;The error value is 0.640367657696983&quot;
+## [1] &quot;The validate error value is 0.618314609066269&quot;
+## [1] &quot;The iteration is 710&quot;
+## [1] &quot;The error value is 0.640464110341826&quot;
+## [1] &quot;The validate error value is 0.617797364119753&quot;
+## [1] &quot;The iteration is 720&quot;
+## [1] &quot;The error value is 0.640516046381356&quot;
+## [1] &quot;The validate error value is 0.617735294726171&quot;
+## [1] &quot;The iteration is 730&quot;
+## [1] &quot;The error value is 0.640574165282736&quot;
+## [1] &quot;The validate error value is 0.61771460492831&quot;
+## [1] &quot;The iteration is 740&quot;
+## [1] &quot;The error value is 0.640481422355003&quot;
+## [1] &quot;The validate error value is 0.617942192704777&quot;
+## [1] &quot;The iteration is 750&quot;
+## [1] &quot;The error value is 0.640546960690601&quot;
+## [1] &quot;The validate error value is 0.617880123311195&quot;
+## [1] &quot;The iteration is 760&quot;
+## [1] &quot;The error value is 0.640635993901225&quot;
+## [1] &quot;The validate error value is 0.617693915130449&quot;
+## [1] &quot;The iteration is 770&quot;
+## [1] &quot;The error value is 0.640645886480183&quot;
+## [1] &quot;The validate error value is 0.617549086545425&quot;
+## [1] &quot;The iteration is 780&quot;
+## [1] &quot;The error value is 0.640603843019611&quot;
+## [1] &quot;The validate error value is 0.617362878364678&quot;
+## [1] &quot;The iteration is 790&quot;
+## [1] &quot;The error value is 0.640690403085495&quot;
+## [1] &quot;The validate error value is 0.617238739577514&quot;
+## [1] &quot;The iteration is 800&quot;
+## [1] &quot;The error value is 0.640747285414505&quot;
+## [1] &quot;The validate error value is 0.617362878364678&quot;
+## [1] &quot;The iteration is 810&quot;
+## [1] &quot;The error value is 0.640836318625129&quot;
+## [1] &quot;The validate error value is 0.617528396747564&quot;
+## [1] &quot;The iteration is 820&quot;
+## [1] &quot;The error value is 0.640906803250207&quot;
+## [1] &quot;The validate error value is 0.617652535534728&quot;
+## [1] &quot;The iteration is 830&quot;
+## [1] &quot;The error value is 0.640941427276561&quot;
+## [1] &quot;The validate error value is 0.617735294726171&quot;
+## [1] &quot;The iteration is 840&quot;
+## [1] &quot;The error value is 0.640956266144998&quot;
+## [1] &quot;The validate error value is 0.617673225332589&quot;
+## [1] &quot;The iteration is 850&quot;
+## [1] &quot;The error value is 0.641013148474008&quot;
+## [1] &quot;The validate error value is 0.617528396747564&quot;
+## [1] &quot;The iteration is 860&quot;
+## [1] &quot;The error value is 0.641070030803018&quot;
+## [1] &quot;The validate error value is 0.617300808971096&quot;
+## [1] &quot;The iteration is 870&quot;
+## [1] &quot;The error value is 0.641128149704397&quot;
+## [1] &quot;The validate error value is 0.617052531396768&quot;
+## [1] &quot;The iteration is 880&quot;
+## [1] &quot;The error value is 0.641088579388564&quot;
+## [1] &quot;The validate error value is 0.616824943620301&quot;
+## [1] &quot;The iteration is 890&quot;
+## [1] &quot;The error value is 0.64111207426359&quot;
+## [1] &quot;The validate error value is 0.616742184428858&quot;
+## [1] &quot;The iteration is 900&quot;
+## [1] &quot;The error value is 0.641125676559658&quot;
+## [1] &quot;The validate error value is 0.616721494630997&quot;
+## [1] &quot;The iteration is 910&quot;
+## [1] &quot;The error value is 0.64111454740833&quot;
+## [1] &quot;The validate error value is 0.616680115035276&quot;
+## [1] &quot;The iteration is 920&quot;
+## [1] &quot;The error value is 0.641176376026819&quot;
+## [1] &quot;The validate error value is 0.616452527258809&quot;
+## [1] &quot;The iteration is 930&quot;
+## [1] &quot;The error value is 0.641256753230854&quot;
+## [1] &quot;The validate error value is 0.616224939482341&quot;
+## [1] &quot;The iteration is 940&quot;
+## [1] &quot;The error value is 0.641279011533511&quot;
+## [1] &quot;The validate error value is 0.615790453727267&quot;
+## [1] &quot;The iteration is 950&quot;
+## [1] &quot;The error value is 0.641272828671662&quot;
+## [1] &quot;The validate error value is 0.61587321291871&quot;
+## [1] &quot;The iteration is 960&quot;
+## [1] &quot;The error value is 0.641265409237443&quot;
+## [1] &quot;The validate error value is 0.61558355574866&quot;
+## [1] &quot;The iteration is 970&quot;
+## [1] &quot;The error value is 0.641262936092703&quot;
+## [1] &quot;The validate error value is 0.6155628659508&quot;
+## [1] &quot;The iteration is 980&quot;
+## [1] &quot;The error value is 0.641290140684838&quot;
+## [1] &quot;The validate error value is 0.615521486355078&quot;
+## [1] &quot;The iteration is 990&quot;
+## [1] &quot;The error value is 0.64139648590864&quot;
+## [1] &quot;The validate error value is 0.61558355574866&quot;
+## [1] &quot;The iteration is 1000&quot;
+## [1] &quot;The error value is 0.641405141915228&quot;
+## [1] &quot;The validate error value is 0.615480106759357&quot;
+## [1] &quot;The iteration is 1010&quot;
+## [1] &quot;The error value is 0.64144965852054&quot;
+## [1] &quot;The validate error value is 0.61527320878075&quot;
+## [1] &quot;The iteration is 1020&quot;
+## [1] &quot;The error value is 0.641400195625749&quot;
+## [1] &quot;The validate error value is 0.61527320878075&quot;
+## [1] &quot;The iteration is 1030&quot;
+## [1] &quot;The error value is 0.641385356757312&quot;
+## [1] &quot;The validate error value is 0.61527320878075&quot;
+## [1] &quot;The iteration is 1040&quot;
+## [1] &quot;The error value is 0.6413940127639&quot;
+## [1] &quot;The validate error value is 0.615024931206422&quot;
+## [1] &quot;The iteration is 1050&quot;
+## [1] &quot;The error value is 0.641416271066556&quot;
+## [1] &quot;The validate error value is 0.614900792419258&quot;
+## [1] &quot;The iteration is 1060&quot;
+## [1] &quot;The error value is 0.641457077954759&quot;
+## [1] &quot;The validate error value is 0.614631825047069&quot;
+## [1] &quot;The iteration is 1070&quot;
+## [1] &quot;The error value is 0.641486755691633&quot;
+## [1] &quot;The validate error value is 0.614673204642791&quot;
+## [1] &quot;The iteration is 1080&quot;
+## [1] &quot;The error value is 0.641536218586425&quot;
+## [1] &quot;The validate error value is 0.61465251484493&quot;
+## [1] &quot;The iteration is 1090&quot;
+## [1] &quot;The error value is 0.641557240316711&quot;
+## [1] &quot;The validate error value is 0.614631825047069&quot;
+## [1] &quot;The iteration is 1100&quot;
+## [1] &quot;The error value is 0.641532508869315&quot;
+## [1] &quot;The validate error value is 0.614693894440651&quot;
+## [1] &quot;The iteration is 1110&quot;
+## [1] &quot;The error value is 0.641528799152206&quot;
+## [1] &quot;The validate error value is 0.614714584238512&quot;
+## [1] &quot;The iteration is 1120&quot;
+## [1] &quot;The error value is 0.641543638020643&quot;
+## [1] &quot;The validate error value is 0.614797343429955&quot;
+## [1] &quot;The iteration is 1130&quot;
+## [1] &quot;The error value is 0.641528799152206&quot;
+## [1] &quot;The validate error value is 0.614921482217119&quot;
+## [1] &quot;The iteration is 1140&quot;
+## [1] &quot;The error value is 0.641542401448274&quot;
+## [1] &quot;The validate error value is 0.614818033227815&quot;
+## [1] &quot;The iteration is 1150&quot;
+## [1] &quot;The error value is 0.641553530599602&quot;
+## [1] &quot;The validate error value is 0.614880102621397&quot;
+## [1] &quot;The iteration is 1160&quot;
+## [1] &quot;The error value is 0.641558476889081&quot;
+## [1] &quot;The validate error value is 0.614797343429955&quot;
+## [1] &quot;The iteration is 1170&quot;
+## [1] &quot;The error value is 0.641531272296946&quot;
+## [1] &quot;The validate error value is 0.614838723025676&quot;
+## [1] &quot;The iteration is 1180&quot;
+## [1] &quot;The error value is 0.641549820882492&quot;
+## [1] &quot;The validate error value is 0.614838723025676&quot;
+## [1] &quot;The iteration is 1190&quot;
+## [1] &quot;The error value is 0.641556003744341&quot;
+## [1] &quot;The validate error value is 0.61496286181284&quot;
+## [1] &quot;The iteration is 1200&quot;
+## [1] &quot;The error value is 0.641580735191737&quot;
+## [1] &quot;The validate error value is 0.61496286181284&quot;
+## [1] &quot;The iteration is 1210&quot;
+## [1] &quot;The error value is 0.641602993494393&quot;
+## [1] &quot;The validate error value is 0.614921482217119&quot;
+## [1] &quot;The iteration is 1220&quot;
+## [1] &quot;The error value is 0.641609176356242&quot;
+## [1] &quot;The validate error value is 0.614942172014979&quot;
+## [1] &quot;The iteration is 1230&quot;
+## [1] &quot;The error value is 0.641663585540512&quot;
+## [1] &quot;The validate error value is 0.614714584238512&quot;
+## [1] &quot;The iteration is 1240&quot;
+## [1] &quot;The error value is 0.641659875823403&quot;
+## [1] &quot;The validate error value is 0.61465251484493&quot;
+## [1] &quot;The iteration is 1250&quot;
+## [1] &quot;The error value is 0.641692026705017&quot;
+## [1] &quot;The validate error value is 0.614673204642791&quot;
+## [1] &quot;The iteration is 1260&quot;
+## [1] &quot;The error value is 0.641717994724782&quot;
+## [1] &quot;The validate error value is 0.614673204642791&quot;
+## [1] &quot;The iteration is 1270&quot;
+## [1] &quot;The error value is 0.641748909034027&quot;
+## [1] &quot;The validate error value is 0.614755963834233&quot;
+## [1] &quot;The iteration is 1280&quot;
+## [1] &quot;The error value is 0.64178724277749&quot;
+## [1] &quot;The validate error value is 0.614673204642791&quot;
+## [1] &quot;The iteration is 1290&quot;
+## [1] &quot;The error value is 0.641826813093323&quot;
+## [1] &quot;The validate error value is 0.614528376057766&quot;
+## [1] &quot;The iteration is 1300&quot;
+## [1] &quot;The error value is 0.641847834823609&quot;
+## [1] &quot;The validate error value is 0.614611135249209&quot;
+## [1] &quot;The iteration is 1310&quot;
+## [1] &quot;The error value is 0.6418441251065&quot;
+## [1] &quot;The validate error value is 0.614590445451348&quot;
+## [1] &quot;The iteration is 1320&quot;
+## [1] &quot;The error value is 0.641829286238062&quot;
+## [1] &quot;The validate error value is 0.614549065855627&quot;
+## [1] &quot;The iteration is 1330&quot;
+## [1] &quot;The error value is 0.641794662211709&quot;
+## [1] &quot;The validate error value is 0.614631825047069&quot;
+## [1] &quot;The iteration is 1340&quot;
+## [1] &quot;The error value is 0.641835469099911&quot;
+## [1] &quot;The validate error value is 0.614590445451348&quot;
+## [1] &quot;The iteration is 1350&quot;
+## [1] &quot;The error value is 0.641837942244651&quot;
+## [1] &quot;The validate error value is 0.614466306664184&quot;
+## [1] &quot;The iteration is 1360&quot;
+## [1] &quot;The error value is 0.641867619981526&quot;
+## [1] &quot;The validate error value is 0.61434216787702&quot;
+## [1] &quot;The iteration is 1370&quot;
+## [1] &quot;The error value is 0.641894824573661&quot;
+## [1] &quot;The validate error value is 0.614362857674881&quot;
+## [1] &quot;The iteration is 1380&quot;
+## [1] &quot;The error value is 0.6418972977184&quot;
+## [1] &quot;The validate error value is 0.614466306664184&quot;
+## [1] &quot;The iteration is 1390&quot;
+## [1] &quot;The error value is 0.641891114856551&quot;
+## [1] &quot;The validate error value is 0.614300788281299&quot;
+## [1] &quot;The iteration is 1400&quot;
+## [1] &quot;The error value is 0.641865146836786&quot;
+## [1] &quot;The validate error value is 0.614383547472741&quot;
+## [1] &quot;The iteration is 1410&quot;
+## [1] &quot;The error value is 0.641871329698635&quot;
+## [1] &quot;The validate error value is 0.614300788281299&quot;
+## [1] &quot;The iteration is 1420&quot;
+## [1] &quot;The error value is 0.641910900014468&quot;
+## [1] &quot;The validate error value is 0.614176649494134&quot;
+## [1] &quot;The iteration is 1430&quot;
+## [1] &quot;The error value is 0.641951706902671&quot;
+## [1] &quot;The validate error value is 0.614197339291995&quot;
+## [1] &quot;The iteration is 1440&quot;
+## [1] &quot;The error value is 0.641941814323712&quot;
+## [1] &quot;The validate error value is 0.614073200504831&quot;
+## [1] &quot;The iteration is 1450&quot;
+## [1] &quot;The error value is 0.64195665319215&quot;
+## [1] &quot;The validate error value is 0.61405251070697&quot;
+## [1] &quot;The iteration is 1460&quot;
+## [1] &quot;The error value is 0.642002406369832&quot;
+## [1] &quot;The validate error value is 0.614011131111249&quot;
+## [1] &quot;The iteration is 1470&quot;
+## [1] &quot;The error value is 0.642039503540925&quot;
+## [1] &quot;The validate error value is 0.614073200504831&quot;
+## [1] &quot;The iteration is 1480&quot;
+## [1] &quot;The error value is 0.642051869264623&quot;
+## [1] &quot;The validate error value is 0.614093890302692&quot;
+## [1] &quot;The iteration is 1490&quot;
+## [1] &quot;The error value is 0.642059288698841&quot;
+## [1] &quot;The validate error value is 0.614155959696274&quot;
+## [1] &quot;The iteration is 1500&quot;
+## [1] &quot;The error value is 0.642088966435716&quot;
+## [1] &quot;The validate error value is 0.614093890302692&quot;
+## [1] &quot;The iteration is 1510&quot;
+## [1] &quot;The error value is 0.642105041876523&quot;
+## [1] &quot;The validate error value is 0.614176649494134&quot;
+## [1] &quot;The iteration is 1520&quot;
+## [1] &quot;The error value is 0.64212606360681&quot;
+## [1] &quot;The validate error value is 0.614155959696274&quot;
+## [1] &quot;The iteration is 1530&quot;
+## [1] &quot;The error value is 0.642131009896289&quot;
+## [1] &quot;The validate error value is 0.614135269898413&quot;
+## [1] &quot;The iteration is 1540&quot;
+## [1] &quot;The error value is 0.642160687633163&quot;
+## [1] &quot;The validate error value is 0.614093890302692&quot;
+## [1] &quot;The iteration is 1550&quot;
+## [1] &quot;The error value is 0.64217799964634&quot;
+## [1] &quot;The validate error value is 0.614073200504831&quot;
+## [1] &quot;The iteration is 1560&quot;
+## [1] &quot;The error value is 0.642166870495012&quot;
+## [1] &quot;The validate error value is 0.614011131111249&quot;
+## [1] &quot;The iteration is 1570&quot;
+## [1] &quot;The error value is 0.642163160777903&quot;
+## [1] &quot;The validate error value is 0.61405251070697&quot;
+## [1] &quot;The iteration is 1580&quot;
+## [1] &quot;The error value is 0.642174289929231&quot;
+## [1] &quot;The validate error value is 0.61403182090911&quot;
+## [1] &quot;The iteration is 1590&quot;
+## [1] &quot;The error value is 0.642211387100324&quot;
+## [1] &quot;The validate error value is 0.614093890302692&quot;
+## [1] &quot;The iteration is 1600&quot;
+## [1] &quot;The error value is 0.642222516251652&quot;
+## [1] &quot;The validate error value is 0.614155959696274&quot;
+## [1] &quot;The iteration is 1610&quot;
+## [1] &quot;The error value is 0.642227462541131&quot;
+## [1] &quot;The validate error value is 0.614155959696274&quot;
+## [1] &quot;The iteration is 1620&quot;
+## [1] &quot;The error value is 0.642242301409569&quot;
+## [1] &quot;The validate error value is 0.613990441313388&quot;
+## [1] &quot;The iteration is 1630&quot;
+## [1] &quot;The error value is 0.642263323139855&quot;
+## [1] &quot;The validate error value is 0.613969751515528&quot;
+## [1] &quot;The iteration is 1640&quot;
+## [1] &quot;The error value is 0.642271979146444&quot;
+## [1] &quot;The validate error value is 0.614073200504831&quot;
+## [1] &quot;The iteration is 1650&quot;
+## [1] &quot;The error value is 0.642271979146444&quot;
+## [1] &quot;The validate error value is 0.614093890302692&quot;
+## [1] &quot;The iteration is 1660&quot;
+## [1] &quot;The error value is 0.642265796284595&quot;
+## [1] &quot;The validate error value is 0.614176649494134&quot;
+## [1] &quot;The iteration is 1670&quot;
+## [1] &quot;The error value is 0.642276925435923&quot;
+## [1] &quot;The validate error value is 0.614321478079159&quot;
+## [1] &quot;The iteration is 1680&quot;
+## [1] &quot;The error value is 0.642285581442511&quot;
+## [1] &quot;The validate error value is 0.614362857674881&quot;
+## [1] &quot;The iteration is 1690&quot;
+## [1] &quot;The error value is 0.642255903705636&quot;
+## [1] &quot;The validate error value is 0.614383547472741&quot;
+## [1] &quot;The iteration is 1700&quot;
+## [1] &quot;The error value is 0.642278162008292&quot;
+## [1] &quot;The validate error value is 0.61434216787702&quot;
+## [1] &quot;The iteration is 1710&quot;
+## [1] &quot;The error value is 0.642301656883318&quot;
+## [1] &quot;The validate error value is 0.614362857674881&quot;
+## [1] &quot;The iteration is 1720&quot;
+## [1] &quot;The error value is 0.64229176430436&quot;
+## [1] &quot;The validate error value is 0.614424927068463&quot;
+## [1] &quot;The iteration is 1730&quot;
+## [1] &quot;The error value is 0.642302893455688&quot;
+## [1] &quot;The validate error value is 0.61434216787702&quot;
+## [1] &quot;The iteration is 1740&quot;
+## [1] &quot;The error value is 0.642323915185974&quot;
+## [1] &quot;The validate error value is 0.614404237270602&quot;
+## [1] &quot;The iteration is 1750&quot;
+## [1] &quot;The error value is 0.642344936916261&quot;
+## [1] &quot;The validate error value is 0.614466306664184&quot;
+## [1] &quot;The iteration is 1760&quot;
+## [1] &quot;The error value is 0.64234864663337&quot;
+## [1] &quot;The validate error value is 0.61434216787702&quot;
+## [1] &quot;The iteration is 1770&quot;
+## [1] &quot;The error value is 0.642386980376833&quot;
+## [1] &quot;The validate error value is 0.614404237270602&quot;
+## [1] &quot;The iteration is 1780&quot;
+## [1] &quot;The error value is 0.642415421541338&quot;
+## [1] &quot;The validate error value is 0.614486996462045&quot;
+## [1] &quot;The iteration is 1790&quot;
+## [1] &quot;The error value is 0.642445099278213&quot;
+## [1] &quot;The validate error value is 0.614549065855627&quot;
+## [1] &quot;The iteration is 1800&quot;
+## [1] &quot;The error value is 0.642452518712431&quot;
+## [1] &quot;The validate error value is 0.614528376057766&quot;
+## [1] &quot;The iteration is 1810&quot;
+## [1] &quot;The error value is 0.642468594153239&quot;
+## [1] &quot;The validate error value is 0.614507686259905&quot;
+## [1] &quot;The iteration is 1820&quot;
+## [1] &quot;The error value is 0.642482196449306&quot;
+## [1] &quot;The validate error value is 0.614300788281299&quot;
+## [1] &quot;The iteration is 1830&quot;
+## [1] &quot;The error value is 0.642500745034853&quot;
+## [1] &quot;The validate error value is 0.614404237270602&quot;
+## [1] &quot;The iteration is 1840&quot;
+## [1] &quot;The error value is 0.642495798745374&quot;
+## [1] &quot;The validate error value is 0.614362857674881&quot;
+## [1] &quot;The iteration is 1850&quot;
+## [1] &quot;The error value is 0.642509401041441&quot;
+## [1] &quot;The validate error value is 0.614404237270602&quot;
+## [1] &quot;The iteration is 1860&quot;
+## [1] &quot;The error value is 0.642525476482248&quot;
+## [1] &quot;The validate error value is 0.614321478079159&quot;
+## [1] &quot;The iteration is 1870&quot;
+## [1] &quot;The error value is 0.642536605633576&quot;
+## [1] &quot;The validate error value is 0.614238718887717&quot;
+## [1] &quot;The iteration is 1880&quot;
+## [1] &quot;The error value is 0.642545261640165&quot;
+## [1] &quot;The validate error value is 0.614197339291995&quot;
+## [1] &quot;The iteration is 1890&quot;
+## [1] &quot;The error value is 0.642553917646753&quot;
+## [1] &quot;The validate error value is 0.614135269898413&quot;
+## [1] &quot;The iteration is 1900&quot;
+## [1] &quot;The error value is 0.642568756515191&quot;
+## [1] &quot;The validate error value is 0.613990441313388&quot;
+## [1] &quot;The iteration is 1910&quot;
+## [1] &quot;The error value is 0.642567519942821&quot;
+## [1] &quot;The validate error value is 0.614093890302692&quot;
+## [1] &quot;The iteration is 1920&quot;
+## [1] &quot;The error value is 0.642577412521779&quot;
+## [1] &quot;The validate error value is 0.613928371919806&quot;
+## [1] &quot;The iteration is 1930&quot;
+## [1] &quot;The error value is 0.642586068528368&quot;
+## [1] &quot;The validate error value is 0.613804233132642&quot;
+## [1] &quot;The iteration is 1940&quot;
+## [1] &quot;The error value is 0.642610799975763&quot;
+## [1] &quot;The validate error value is 0.613824922930503&quot;
+## [1] &quot;The iteration is 1950&quot;
+## [1] &quot;The error value is 0.64263058513368&quot;
+## [1] &quot;The validate error value is 0.613907682121946&quot;
+## [1] &quot;The iteration is 1960&quot;
+## [1] &quot;The error value is 0.642650370291596&quot;
+## [1] &quot;The validate error value is 0.613907682121946&quot;
+## [1] &quot;The iteration is 1970&quot;
+## [1] &quot;The error value is 0.642663972587664&quot;
+## [1] &quot;The validate error value is 0.613866302526224&quot;
+## [1] &quot;The iteration is 1980&quot;
+## [1] &quot;The error value is 0.642699833186387&quot;
+## [1] &quot;The validate error value is 0.613886992324085&quot;
+## [1] &quot;The iteration is 1990&quot;
+## [1] &quot;The error value is 0.642725801206153&quot;
+## [1] &quot;The validate error value is 0.613886992324085&quot;
+## [1] &quot;The iteration is 2000&quot;
+## [1] &quot;The error value is 0.642749296081178&quot;
+## [1] &quot;The validate error value is 0.613949061717667&quot;
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">####C-index in training data</span>
+<span class="hl kwd">ggplot</span><span class="hl std">(</span><span class="hl kwa">NULL</span><span class="hl std">,</span><span class="hl kwd">aes</span><span class="hl std">(</span><span class="hl kwc">y</span><span class="hl std">=SCGP_res</span><span class="hl opt">$</span><span class="hl std">cost,</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">length</span><span class="hl std">(SCGP_res</span><span class="hl opt">$</span><span class="hl std">cost)))</span><span class="hl opt">+</span><span class="hl kwd">geom_point</span><span class="hl std">()</span><span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl str">&quot;&quot;</span><span class="hl std">,</span><span class="hl kwc">y</span><span class="hl std">=</span><span class="hl str">&quot;C-index in training data&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-12-1.png" title="plot of chunk unnamed-chunk-12" alt="plot of chunk unnamed-chunk-12" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">####C-index in testing data</span>
+<span class="hl kwd">ggplot</span><span class="hl std">(</span><span class="hl kwa">NULL</span><span class="hl std">,</span><span class="hl kwd">aes</span><span class="hl std">(</span><span class="hl kwc">y</span><span class="hl std">=SCGP_res</span><span class="hl opt">$</span><span class="hl std">validate_cost,</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">length</span><span class="hl std">(SCGP_res</span><span class="hl opt">$</span><span class="hl std">validate_cost)))</span><span class="hl opt">+</span><span class="hl kwd">geom_point</span><span class="hl std">()</span><span class="hl opt">+</span><span class="hl kwd">labs</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl str">&quot;&quot;</span><span class="hl std">,</span><span class="hl kwc">y</span><span class="hl std">=</span><span class="hl str">&quot;C-index in testing data&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-12-2.png" title="plot of chunk unnamed-chunk-12" alt="plot of chunk unnamed-chunk-12" class="plot" /></div></div>
+<p>Get output value</p>
+<div class="chunk" id="unnamed-chunk-13"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(survival)</span>
+<span class="hl std">output</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_get_output</span><span class="hl std">(data,SCGP_res)</span>
+<span class="hl kwd">summary</span><span class="hl std">(</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(clin</span><span class="hl opt">$</span><span class="hl std">time,clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl std">output))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(clin$time, clin$status) ~ output)
+## 
+##   n= 1523, number of events= 887 
+## 
+##           coef exp(coef) se(coef)      z Pr(&gt;|z|)    
+## output -1.7239    0.1784   0.1345 -12.82   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##        exp(coef) exp(-coef) lower .95 upper .95
+## output    0.1784      5.606     0.137    0.2322
+## 
+## Concordance= 0.643  (se = 0.01 )
+## Likelihood ratio test= 177.9  on 1 df,   p=&lt;2e-16
+## Wald test            = 164.3  on 1 df,   p=&lt;2e-16
+## Score (logrank) test = 165.4  on 1 df,   p=&lt;2e-16
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">validate_output</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_get_output</span><span class="hl std">(validate_data,SCGP_res)</span>
+<span class="hl kwd">summary</span><span class="hl std">(</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(validate_clin</span><span class="hl opt">$</span><span class="hl std">time,validate_clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl std">validate_output))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(validate_clin$time, validate_clin$status) ~ 
+##     validate_output)
+## 
+##   n= 381, number of events= 216 
+## 
+##                    coef exp(coef) se(coef)      z Pr(&gt;|z|)    
+## validate_output -1.4084    0.2445   0.2438 -5.776 7.66e-09 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##                 exp(coef) exp(-coef) lower .95 upper .95
+## validate_output    0.2445      4.089    0.1516    0.3944
+## 
+## Concordance= 0.614  (se = 0.021 )
+## Likelihood ratio test= 36.46  on 1 df,   p=2e-09
+## Wald test            = 33.36  on 1 df,   p=8e-09
+## Score (logrank) test = 33.73  on 1 df,   p=6e-09
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###CPH model</span>
+<span class="hl std">CPH</span><span class="hl kwb">=</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(clin</span><span class="hl opt">$</span><span class="hl std">time,clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl std">.,</span><span class="hl kwd">as.data.frame</span><span class="hl std">(data))</span>
+<span class="hl kwd">summary</span><span class="hl std">(CPH)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(clin$time, clin$status) ~ ., data = as.data.frame(data))
+## 
+##   n= 1523, number of events= 887 
+## 
+##          coef exp(coef)  se(coef)      z Pr(&gt;|z|)    
+## `1`    0.4642    1.5908    0.5183  0.896  0.37039    
+## `2`   -0.9152    0.4005    0.4995 -1.832  0.06693 .  
+## `3`    1.7848    5.9583    0.4531  3.939 8.19e-05 ***
+## `4`    1.3731    3.9476    0.4547  3.020  0.00253 ** 
+## `5`    1.1610    3.1930    0.4858  2.390  0.01686 *  
+## `6`   -1.3343    0.2633    0.4466 -2.988  0.00281 ** 
+## `7`    4.0441   57.0575    0.5934  6.815 9.41e-12 ***
+## `8`    0.3821    1.4654    0.6387  0.598  0.54968    
+## `9`    7.2584 1420.0219    0.5677 12.785  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##     exp(coef) exp(-coef) lower .95 upper .95
+## `1`    1.5908  0.6286248    0.5761    4.3929
+## `2`    0.4005  2.4971753    0.1504    1.0659
+## `3`    5.9583  0.1678338    2.4514   14.4817
+## `4`    3.9476  0.2533178    1.6192    9.6244
+## `5`    3.1930  0.3131884    1.2322    8.2737
+## `6`    0.2633  3.7974294    0.1097    0.6319
+## `7`   57.0575  0.0175262   17.8327  182.5608
+## `8`    1.4654  0.6824236    0.4191    5.1241
+## `9` 1420.0219  0.0007042  466.7198 4320.4985
+## 
+## Concordance= 0.641  (se = 0.01 )
+## Likelihood ratio test= 248.8  on 9 df,   p=&lt;2e-16
+## Wald test            = 231.4  on 9 df,   p=&lt;2e-16
+## Score (logrank) test = 235.1  on 9 df,   p=&lt;2e-16
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">summary</span><span class="hl std">(</span><span class="hl kwd">coxph</span><span class="hl std">(</span><span class="hl kwd">Surv</span><span class="hl std">(validate_clin</span><span class="hl opt">$</span><span class="hl std">time,validate_clin</span><span class="hl opt">$</span><span class="hl std">status)</span><span class="hl opt">~</span><span class="hl kwd">predict</span><span class="hl std">(CPH,</span><span class="hl kwd">as.data.frame</span><span class="hl std">(validate_data))))</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Call:
+## coxph(formula = Surv(validate_clin$time, validate_clin$status) ~ 
+##     predict(CPH, as.data.frame(validate_data)))
+## 
+##   n= 381, number of events= 216 
+## 
+##                                              coef exp(coef) se(coef)     z
+## predict(CPH, as.data.frame(validate_data)) 0.8775    2.4049   0.1163 7.548
+##                                            Pr(&gt;|z|)    
+## predict(CPH, as.data.frame(validate_data)) 4.41e-14 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##                                            exp(coef) exp(-coef) lower .95
+## predict(CPH, as.data.frame(validate_data))     2.405     0.4158     1.915
+##                                            upper .95
+## predict(CPH, as.data.frame(validate_data))      3.02
+## 
+## Concordance= 0.632  (se = 0.021 )
+## Likelihood ratio test= 62.8  on 1 df,   p=2e-15
+## Wald test            = 56.98  on 1 df,   p=4e-14
+## Score (logrank) test = 58.07  on 1 df,   p=3e-14
+</pre></div>
+</div></div>
+<h2>Calculation of importance score</h2>
+<div class="chunk" id="unnamed-chunk-14"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(pracma)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## 
+## 载入程辑包：'pracma'
+</pre></div>
+<div class="message"><pre class="knitr r">## The following object is masked _by_ '.GlobalEnv':
+## 
+##     sigmoid
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">weight</span><span class="hl kwb">=</span><span class="hl std">SCGP_res</span><span class="hl opt">$</span><span class="hl std">weight</span>
+<span class="hl std">bias</span><span class="hl kwb">=</span><span class="hl std">SCGP_res</span><span class="hl opt">$</span><span class="hl std">bias</span>
+<span class="hl std">imp_perturbation</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_perturbation</span><span class="hl std">(data, weight, bias)</span> <span class="hl com">##perturbation scores</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">imp_occlusion</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_occlusion</span><span class="hl std">(data, weight, bias)</span> <span class="hl com">##occlusion scores</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###visualization</span>
+<span class="hl kwd">plot</span><span class="hl std">(imp_perturbation)</span>
+<span class="hl kwd">text</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=imp_perturbation</span><span class="hl opt">$</span><span class="hl std">ID,</span><span class="hl kwc">y</span><span class="hl std">=imp_perturbation</span><span class="hl opt">$</span><span class="hl std">Influence,imp_perturbation</span><span class="hl opt">$</span><span class="hl std">ID)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-14-1.png" title="plot of chunk unnamed-chunk-14" alt="plot of chunk unnamed-chunk-14" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(imp_occlusion)</span>
+<span class="hl kwd">text</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=imp_occlusion</span><span class="hl opt">$</span><span class="hl std">ID,</span><span class="hl kwc">y</span><span class="hl std">=imp_occlusion</span><span class="hl opt">$</span><span class="hl std">Influence,imp_occlusion</span><span class="hl opt">$</span><span class="hl std">ID)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-14-2.png" title="plot of chunk unnamed-chunk-14" alt="plot of chunk unnamed-chunk-14" class="plot" /></div></div>
+
+<h2>Building SCM from pre-defined gene interaction matrix</h2>
+<div class="chunk" id="unnamed-chunk-15"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">GIM</span><span class="hl kwb">=</span><span class="hl kwd">matrix</span><span class="hl std">(</span><span class="hl kwd">sample</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">0</span><span class="hl std">,</span><span class="hl num">1</span><span class="hl std">),</span><span class="hl kwc">size</span><span class="hl std">=</span><span class="hl kwd">ncol</span><span class="hl std">(data)</span><span class="hl opt">*</span><span class="hl kwd">ncol</span><span class="hl std">(data),</span><span class="hl kwc">replace</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">),</span><span class="hl kwd">ncol</span><span class="hl std">(data),</span><span class="hl kwd">ncol</span><span class="hl std">(data))</span> <span class="hl com">####pre-defined gene interaction matrix</span>
+<span class="hl std">option</span><span class="hl kwb">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">),</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl kwd">ncol</span><span class="hl std">(GIM)))</span>
+<span class="hl std">SCM.auto</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_autoencoder</span><span class="hl std">(GIM,option,</span><span class="hl kwc">learning_rate</span><span class="hl std">=</span><span class="hl num">0.00001</span><span class="hl std">,</span><span class="hl kwc">training_n</span><span class="hl std">=</span><span class="hl num">50000</span><span class="hl std">,</span><span class="hl kwc">message_n</span><span class="hl std">=</span><span class="hl num">1000</span><span class="hl std">)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;The iteration is 1000&quot;
+## [1] &quot;The error value is 0.636553572058239&quot;
+## [1] &quot;The iteration is 2000&quot;
+## [1] &quot;The error value is 0.572953715919223&quot;
+## [1] &quot;The iteration is 3000&quot;
+## [1] &quot;The error value is 0.536918017692677&quot;
+## [1] &quot;The iteration is 4000&quot;
+## [1] &quot;The error value is 0.515274837384287&quot;
+## [1] &quot;The iteration is 5000&quot;
+## [1] &quot;The error value is 0.502017958107515&quot;
+## [1] &quot;The iteration is 6000&quot;
+## [1] &quot;The error value is 0.494272017511734&quot;
+## [1] &quot;The iteration is 7000&quot;
+## [1] &quot;The error value is 0.487983999542837&quot;
+## [1] &quot;The iteration is 8000&quot;
+## [1] &quot;The error value is 0.482078968888503&quot;
+## [1] &quot;The iteration is 9000&quot;
+## [1] &quot;The error value is 0.476526622983125&quot;
+## [1] &quot;The iteration is 10000&quot;
+## [1] &quot;The error value is 0.471335665529231&quot;
+## [1] &quot;The iteration is 11000&quot;
+## [1] &quot;The error value is 0.4665067744341&quot;
+## [1] &quot;The iteration is 12000&quot;
+## [1] &quot;The error value is 0.461800581827684&quot;
+## [1] &quot;The iteration is 13000&quot;
+## [1] &quot;The error value is 0.457109037153754&quot;
+## [1] &quot;The iteration is 14000&quot;
+## [1] &quot;The error value is 0.452414522313014&quot;
+## [1] &quot;The iteration is 15000&quot;
+## [1] &quot;The error value is 0.447703269276761&quot;
+## [1] &quot;The iteration is 16000&quot;
+## [1] &quot;The error value is 0.442528665734712&quot;
+## [1] &quot;The iteration is 17000&quot;
+## [1] &quot;The error value is 0.436501287846209&quot;
+## [1] &quot;The iteration is 18000&quot;
+## [1] &quot;The error value is 0.430396402087647&quot;
+## [1] &quot;The iteration is 19000&quot;
+## [1] &quot;The error value is 0.424448513157065&quot;
+## [1] &quot;The iteration is 20000&quot;
+## [1] &quot;The error value is 0.419144537762279&quot;
+## [1] &quot;The iteration is 21000&quot;
+## [1] &quot;The error value is 0.414374944120492&quot;
+## [1] &quot;The iteration is 22000&quot;
+## [1] &quot;The error value is 0.409581942287866&quot;
+## [1] &quot;The iteration is 23000&quot;
+## [1] &quot;The error value is 0.404920544763572&quot;
+## [1] &quot;The iteration is 24000&quot;
+## [1] &quot;The error value is 0.400433143259411&quot;
+## [1] &quot;The iteration is 25000&quot;
+## [1] &quot;The error value is 0.395972220202772&quot;
+## [1] &quot;The iteration is 26000&quot;
+## [1] &quot;The error value is 0.391789025430487&quot;
+## [1] &quot;The iteration is 27000&quot;
+## [1] &quot;The error value is 0.387905570392944&quot;
+## [1] &quot;The iteration is 28000&quot;
+## [1] &quot;The error value is 0.384088922760739&quot;
+## [1] &quot;The iteration is 29000&quot;
+## [1] &quot;The error value is 0.380351225732375&quot;
+## [1] &quot;The iteration is 30000&quot;
+## [1] &quot;The error value is 0.376702573680355&quot;
+## [1] &quot;The iteration is 31000&quot;
+## [1] &quot;The error value is 0.373497187962826&quot;
+## [1] &quot;The iteration is 32000&quot;
+## [1] &quot;The error value is 0.371668221086121&quot;
+## [1] &quot;The iteration is 33000&quot;
+## [1] &quot;The error value is 0.370114250851991&quot;
+## [1] &quot;The iteration is 34000&quot;
+## [1] &quot;The error value is 0.36856709759927&quot;
+## [1] &quot;The iteration is 35000&quot;
+## [1] &quot;The error value is 0.367416325736409&quot;
+## [1] &quot;The iteration is 36000&quot;
+## [1] &quot;The error value is 0.366277975515308&quot;
+## [1] &quot;The iteration is 37000&quot;
+## [1] &quot;The error value is 0.36514008641785&quot;
+## [1] &quot;The iteration is 38000&quot;
+## [1] &quot;The error value is 0.364286497690293&quot;
+## [1] &quot;The iteration is 39000&quot;
+## [1] &quot;The error value is 0.363894758520914&quot;
+## [1] &quot;The iteration is 40000&quot;
+## [1] &quot;The error value is 0.363885852471232&quot;
+## [1] &quot;The iteration is 41000&quot;
+## [1] &quot;The error value is 0.364156807233668&quot;
+## [1] &quot;The iteration is 42000&quot;
+## [1] &quot;The error value is 0.36491724139179&quot;
+## [1] &quot;The iteration is 43000&quot;
+## [1] &quot;The error value is 0.366411216409665&quot;
+## [1] &quot;The iteration is 44000&quot;
+## [1] &quot;The error value is 0.367945443692523&quot;
+## [1] &quot;The iteration is 45000&quot;
+## [1] &quot;The error value is 0.369135088630427&quot;
+## [1] &quot;The iteration is 46000&quot;
+## [1] &quot;The error value is 0.369567774636241&quot;
+## [1] &quot;The iteration is 47000&quot;
+## [1] &quot;The error value is 0.370178073841522&quot;
+## [1] &quot;The iteration is 48000&quot;
+## [1] &quot;The error value is 0.371215368909062&quot;
+## [1] &quot;The iteration is 49000&quot;
+## [1] &quot;The error value is 0.372265931982712&quot;
+## [1] &quot;The iteration is 50000&quot;
+## [1] &quot;The error value is 0.37326725383979&quot;
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">SCM.a</span><span class="hl kwb">=</span><span class="hl kwd">SCGP_get_autoencoder</span><span class="hl std">(GIM,SCM.auto)</span>
+<span class="hl std">dis_data</span><span class="hl kwb">=</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">distance</span><span class="hl std">(GIM,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;euclidean&quot;</span><span class="hl std">,</span><span class="hl kwc">test.na</span> <span class="hl std">= F,</span><span class="hl kwc">use.row.names</span><span class="hl std">=T))[,</span><span class="hl num">3</span><span class="hl std">]</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">dis_SCM</span><span class="hl kwb">=</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">distance</span><span class="hl std">(SCM.a,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;euclidean&quot;</span><span class="hl std">,</span><span class="hl kwc">test.na</span> <span class="hl std">= F,</span><span class="hl kwc">use.row.names</span><span class="hl std">=T))[,</span><span class="hl num">3</span><span class="hl std">]</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(dis_data,dis_SCM)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-15-1.png" title="plot of chunk unnamed-chunk-15" alt="plot of chunk unnamed-chunk-15" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl com">##calculate max PCIW</span>
+<span class="hl std">cor_r</span><span class="hl kwb">=</span><span class="hl num">NA</span>
+<span class="hl std">cor_p</span><span class="hl kwb">=</span><span class="hl num">NA</span>
+<span class="hl com">#Por is sparsity</span>
+<span class="hl kwa">for</span> <span class="hl std">(Por</span> <span class="hl kwa">in</span> <span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0.1</span><span class="hl std">,</span><span class="hl num">0.8</span><span class="hl std">,</span><span class="hl kwc">by</span><span class="hl std">=</span><span class="hl num">0.1</span><span class="hl std">)){</span>
+<span class="hl std">weight_selective</span><span class="hl kwb">=</span><span class="hl std">SCM.a</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&gt;</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&lt;=</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+<span class="hl std">a2</span><span class="hl kwb">=</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">distance</span><span class="hl std">(weight_selective,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;euclidean&quot;</span><span class="hl std">,</span><span class="hl kwc">test.na</span> <span class="hl std">= F,</span><span class="hl kwc">use.row.names</span><span class="hl std">=T))[,</span><span class="hl num">3</span><span class="hl std">]</span>
+<span class="hl std">COR</span><span class="hl kwb">=</span><span class="hl kwd">cor.test</span><span class="hl std">(dis_data,a2)</span>
+<span class="hl std">cor_r</span><span class="hl kwb">=</span><span class="hl kwd">c</span><span class="hl std">(cor_r,COR</span><span class="hl opt">$</span><span class="hl std">estimate)</span>
+<span class="hl std">cor_p</span><span class="hl kwb">=</span><span class="hl kwd">c</span><span class="hl std">(cor_p,COR</span><span class="hl opt">$</span><span class="hl std">p.value)</span>
+<span class="hl std">}</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+## Metric: 'euclidean'; comparing: 9 vectors.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0.1</span><span class="hl std">,</span><span class="hl num">0.8</span><span class="hl std">,</span><span class="hl kwc">by</span><span class="hl std">=</span><span class="hl num">0.1</span><span class="hl std">),cor_r[</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">])</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-15-2.png" title="plot of chunk unnamed-chunk-15" alt="plot of chunk unnamed-chunk-15" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(</span><span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0.1</span><span class="hl std">,</span><span class="hl num">0.8</span><span class="hl std">,</span><span class="hl kwc">by</span><span class="hl std">=</span><span class="hl num">0.1</span><span class="hl std">),cor_p[</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">])</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-15-3.png" title="plot of chunk unnamed-chunk-15" alt="plot of chunk unnamed-chunk-15" class="plot" /></div><div class="rcode">
+<div class="source"><pre class="knitr r"><span class="hl std">Por</span><span class="hl kwb">=</span><span class="hl num">0.6</span>
+<span class="hl std">weight_selective</span><span class="hl kwb">=</span><span class="hl std">SCM.a</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&gt;</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">1</span>
+<span class="hl std">weight_selective[(weight_selective)</span><span class="hl opt">&lt;=</span><span class="hl kwd">quantile</span><span class="hl std">(</span><span class="hl kwd">melt</span><span class="hl std">(</span><span class="hl kwd">basis</span><span class="hl std">(SCM.r))[,</span><span class="hl num">3</span><span class="hl std">],Por) ]</span><span class="hl kwb">=</span><span class="hl num">0</span>
+<span class="hl com">####</span>
+</pre></div>
+</div></div>
+
+</body>
+</html>
