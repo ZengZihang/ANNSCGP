@@ -14,6 +14,6 @@ then
 ```library(ANNSCGP)```
 
 # Vignette
-Please download **vignettes.html** to see how the package is used.
+Please download **vignettes.pdf or vignettes.html** to see how the package is used.
 # Cite
 Please cite "Prediction of Radiosensitivity and Radiocurability Using a Novel Supervised Artificial Neural Network"
