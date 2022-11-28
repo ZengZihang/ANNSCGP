@@ -16,4 +16,4 @@ then
 # Vignette
 Please download **vignettes.pdf or vignettes.html** to see how the package is used.
 # Cite
-Please cite "Prediction of Radiosensitivity and Radiocurability Using a Novel Supervised Artificial Neural Network"
+Please cite "Zihang Zeng, Maoling Luo, Yangyi Li et al. Prediction of Radiosensitivity and Radiocurability Using a Novel Supervised Artificial Neural Network. BMC Cancer. 2022"
